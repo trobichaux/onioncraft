@@ -10,7 +10,7 @@ A Guild Wars 2 planning tool for crafting profit analysis and skin collection tr
 
 ## Features
 
-- **Crafting Profit Calculator** — finds the most profitable items to craft given your current TP prices, learned recipes, crafting disciplines, and material overages after reserving for a legendary ring goal
+- **Crafting Profit Calculator** — finds the most profitable items to craft given your current TP prices, learned recipes, crafting disciplines, and material overages after reserving for one or more simultaneous legendary goals (initial target: Endless Summer ring)
 - **Skin Collection Tracker** — shows unowned weapon/armor skins ranked by user-defined priority rules (acquisition method, cost, skin type)
 
 ## Design

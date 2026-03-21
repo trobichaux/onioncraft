@@ -9,7 +9,7 @@ A personal web application for Guild Wars 2 players to manage crafting profit an
 
 ## Goals
 
-1. **Crafting Profit Calculator** — identify the most profitable craftable items given current TP prices, the player's known recipes (filtered by available crafting disciplines), and material overages after accounting for a legendary ring goal.
+1. **Crafting Profit Calculator** — identify the most profitable craftable items given current TP prices, the player's known recipes (filtered by available crafting disciplines), and material overages after accounting for one or more simultaneous legendary goals.
 2. **Skin Collection Tracker** — review unowned weapon/armor skins and prioritize unlock paths (direct buy, TP, achievement, etc.) using user-defined persistent priority rules.
 
 ### Non-Goals (for now)
@@ -60,10 +60,12 @@ Four route groups, all passing through `getRequestUser()` auth stub:
 - `/api/v1/settings/*` — CRUD for exclusion list, priority rules, API key, goal config
 
 Key routes within `/api/v1/crafting/*`:
-- `POST /api/v1/crafting/resolve-goal` — resolves the dependency tree for the selected ring, writes snapshot to GoalProgress table
-- `GET /api/v1/crafting/goal-progress` — reads current GoalProgress snapshot for the user
+- `GET /api/v1/crafting/goals` — returns list of all active goals for the user
+- `POST /api/v1/crafting/goals` — adds a new legendary goal (body: `{ itemId }`)
+- `DELETE /api/v1/crafting/goals/:itemId` — removes a goal
+- `POST /api/v1/crafting/goals/resolve` — resolves/refreshes dependency tree snapshots for ALL active goals
 - `POST /api/v1/crafting/refresh-prices` — fetches and caches TP prices
-- `GET /api/v1/crafting/profit` — returns ranked profit table using cached prices + current snapshot
+- `GET /api/v1/crafting/profit` — returns ranked profit table using cached prices + all active goal snapshots
 
 **Auth Stub**
 ```typescript
@@ -82,12 +84,14 @@ The GW2 API (`/v2/recipes`) does not include Mystic Forge conversions, NPC vendo
 
 | Table | Partition Key | Row Key | Notes |
 |-------|--------------|---------|-------|
-| `Settings` | `userId` | `exclusionList` / `priorityRules` / `apiKey` / `goalConfig` | JSON string in `value` property. Max 64KB per entity. |
+| `Settings` | `userId` | `exclusionList` / `priorityRules` / `apiKey` / `characterFilter` | JSON string in `value` property. Max 64KB per entity. |
 | `PriceCache` | `"shared"` | `itemId` | Fields: `buyPrice: number`, `sellPrice: number`, `cachedAt: string (ISO 8601)`. Never user-partitioned. |
-| `GoalProgress` | `userId` | `goalId` (= GW2 item ID of the legendary ring) | JSON string in `value` property. Includes `resolvedAt: string (ISO 8601)`. |
+| `GoalProgress` | `userId` | `goalId` (= GW2 item ID of the legendary item) | One row per active goal. JSON string in `value` property. Includes `resolvedAt: string (ISO 8601)`. Multiple rows per user are expected and supported. |
 | `SkinCache` | `"shared"` | `skinId` | Fields: `name`, `type`, `icon`, `cachedAt`. TTL: 24 hours. Never user-partitioned. |
 
-**GoalProgress snapshot** is refreshed on two triggers: (1) user selects a new goal, (2) user explicitly clicks "Refresh Inventory." The snapshot is point-in-time; the UI shows "Inventory last synced: X ago."
+**Multiple simultaneous goals are supported.** Each active goal is a separate row in GoalProgress (same `userId` partition, different `goalId` row key). Overage calculation sums reserved materials across ALL active goals — materials needed for any goal are unavailable for profit crafting.
+
+**GoalProgress snapshots** are refreshed on two triggers: (1) user adds a new goal, (2) user explicitly clicks "Refresh Inventory." All active goal snapshots are refreshed together. The UI shows "Inventory last synced: X ago."
 
 **Azure SWA / Next.js Compatibility Note**
 Azure Static Web Apps Next.js support (hybrid rendering + API routes as Functions) is validated for Next.js App Router. Local development uses Azurite to emulate Table Storage. Environment variables (Table Storage connection string) are managed via SWA environment config and `.env.local` for local dev.
@@ -133,18 +137,23 @@ The GW2 API is rate-limited (approximately 600 requests/minute) and periodically
 - `/v2/commerce/prices` — TP buy/sell prices (bulk, batched)
 - `/v2/legendaryarmory` — legendary item IDs (entry point for goal list)
 
-### Supported Legendary Ring Goals (v1)
-The legendary ring list is seeded from `/v2/legendaryarmory`, then cross-referenced with `/v2/items` to filter to `type: "Ring"`. Each ring's dependency tree is resolved starting from its item ID. Mystic Forge steps fall back to `data/mystic-forge-recipes.json`.
+### Legendary Goals
+The app supports **multiple simultaneous legendary goals** — the user can add any number of items from `/v2/legendaryarmory` as active goals. Each goal's dependency tree is resolved independently and stored as a separate GoalProgress row.
+
+The legendary item list is seeded from `/v2/legendaryarmory`, then cross-referenced with `/v2/items` to determine type and name. Initial target: **Endless Summer** (Living World Season 3 legendary ring). Eventually two rings are planned, but the system is fully generic — any legendary item from the armory can be added as a goal.
+
+Mystic Forge steps in any goal's dependency tree fall back to `data/mystic-forge-recipes.json`.
 
 ### User Flow
-1. User sets their GW2 API key once (stored server-side, never returned to client). App validates the key has all required permissions (see above) and shows specific missing-permission errors if not.
-2. User selects their legendary ring goal from a list
-3. App fetches: shared inventory, all character inventories, bank, material storage, wallet, learned recipes, and **crafting disciplines for each character**
-4. App resolves the full dependency tree (`POST /api/v1/crafting/resolve-goal`). Snapshot persisted to GoalProgress with `resolvedAt` timestamp.
-5. App walks the tree bottom-up to compute overages (see Dependency Graph section)
-6. User refreshes TP prices on demand. UI shows "Prices last updated: X ago."
-7. App computes profit for all craftable recipes — filtered to disciplines available on the account — excludes exclusion list items, presents ranked table
-8. Overage materials from step 5 reduce `crafting_cost` (their effective cost = 0)
+1. User sets their GW2 API key once (stored server-side, never returned to client). App validates key permissions and shows specific missing-permission errors.
+2. User selects which characters to include in inventory calculations from the Characters panel (stored in `Settings` as `characterFilter`). Defaults to all characters; deselect characters with irrelevant inventories.
+3. User manages active legendary goals from the Goals panel — add any item from `/v2/legendaryarmory`, remove goals when complete. No limit on number of active goals.
+4. App fetches inventory for selected characters only: bags, bank, material storage, wallet, learned recipes, and crafting disciplines.
+5. App resolves dependency trees for all active goals (`POST /api/v1/crafting/goals/resolve`). Each goal gets its own GoalProgress snapshot with `resolvedAt` timestamp.
+6. App walks all trees bottom-up and sums required materials across all active goals. `overage = holdings - totalRequired(across all goals)`. Only positive overages are available for profit crafting.
+7. User refreshes TP prices on demand. UI shows "Prices last updated: X ago."
+8. App computes profit for all craftable recipes — filtered by available disciplines, minus exclusion list — presents ranked table.
+9. Overage materials reduce `crafting_cost` (their effective cost = 0).
 
 ### Crafting Discipline Filtering
 GW2 recipes belong to a crafting discipline (Weaponsmith, Armorsmith, Jeweler, Tailor, Leatherworker, Artificer, Huntsman, Chef, Scribe). A recipe is only craftable if at least one character has the required discipline at sufficient level.
@@ -160,7 +169,9 @@ A recipe marked `Learned` but belonging to an unleveled discipline is excluded f
 
 Materials are modeled as a DAG where leaf nodes are raw materials/currencies and the root is the legendary ring.
 
-**Overage example:** A ring recipe requires 10 Mithril Ingots; player holds 15. Overage = 5. These 5 ingots are available for profitable crafting. If two profitable recipes both use Mithril Ingots, the overage is allocated greedily — highest-profit recipe gets first claim. Surplus at one node does not reduce requirements at sibling nodes.
+**Multi-goal overage example:** The user has two active goals. Goal A requires 10 Mithril Ingots; Goal B requires 8 Mithril Ingots. Total reserved = 18. Player holds 25. Overage = 7. These 7 ingots are available for profitable crafting. If two profitable recipes both use Mithril Ingots, the overage is allocated greedily — highest-profit recipe gets first claim. Surplus at one node does not reduce requirements at sibling nodes.
+
+With a single active goal the behaviour is identical — the multi-goal path degenerates cleanly to the single-goal case.
 
 **Currency modeling:** Gold is the unit of cost, not a DAG node. Non-gold currencies modeled as DAG nodes with conversion edges defined in `data/currency-conversions.json`:
 
@@ -324,8 +335,9 @@ All files include a top-level `lastVerified` field. Update this date after verif
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14+ (App Router), React, TypeScript |
-| Backend | Next.js API Routes (`/api/v1/`) → Azure Functions |
+| Frontend | Next.js **14.x** (App Router), React, TypeScript |
+| Backend | Next.js API Routes (`/api/v1/`) → Azure Functions **v4 runtime** |
+| Runtime | **Node.js 22** (Node 20 support ends April 2026; start on 22) |
 | Persistence | Azure Table Storage |
 | Local dev emulation | Azurite |
 | Hosting | Azure Static Web Apps (Free tier; Standard tier needed for custom auth) |

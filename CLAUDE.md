@@ -227,12 +227,22 @@ Check the `account_bind_on_use` and `account_bound` flags from `/v2/items`. Acco
 - **Currency conversion ratios** (Spirit Shards → Philosopher's Stone, etc.) → `data/currency-conversions.json`
 - **Daily/weekly craft production caps** (Charged Quartz Crystal: 1/day, etc.) → `data/craft-limits.json`
 
+### Multiple Simultaneous Goals
+The app supports N active legendary goals at once. Each goal is a separate GoalProgress row. **Overage is always computed against the SUM of all active goals.** Never compute overage against a single goal in isolation — it will produce incorrect results when multiple goals are active.
+
+`overage(item) = holdings(item) - sum(required(item) across all active goals)`
+
+The single-goal case is just this formula with one goal in the sum.
+
+### Character Filter
+Users select which characters to include in inventory calculations. The selection is stored in `Settings` (row: `characterFilter`) as a JSON array of character names. When fetching inventories, only fetch selected characters. Default = all characters.
+
 ### Recipe Tree Pattern (gw2efficiency-inspired)
 Split dependency graph resolution into two discrete functions — this is the proven pattern from [gw2efficiency/recipe-nesting](https://github.com/gw2efficiency/recipe-nesting):
 1. `buildRecipeTree(goalItemId)` — constructs the DAG from API + static data. Pure, cacheable.
-2. `calculateOverages(tree, inventory)` — walks the tree bottom-up, computes per-node overage. Pure, testable.
+2. `calculateOverages(trees[], inventory)` — accepts an array of trees (one per active goal), walks all bottom-up, sums requirements per item, returns per-item overage map. Pure, testable.
 
-Never combine these into one function.
+Never combine these into one function. Always pass all active goal trees together to `calculateOverages`.
 
 ### Attribute Names (for build-related features)
 Power, Precision, Toughness, Vitality, Concentration, Condition Damage, Expertise, Ferocity, Healing Power, Armor, Boon Duration, Critical Chance, Critical Damage, Condition Duration
@@ -361,4 +371,7 @@ When building any frontend page or shared layout component, verify the footer di
 - Do not commit unless explicitly asked.
 - When uncertain about scope, ask before spawning a large parallel workload.
 - Run `swa start` (not just `next dev`) when testing anything related to routing or API routes.
+- **Node.js version:** Always use Node 22. Node 20 support in Azure Functions ends April 2026. Pin in `package.json` engines field and `.nvmrc`.
+- **Next.js version:** Pin to 14.x. Do not upgrade to 15.x without first verifying SWA compatibility.
+- **Azure Functions runtime:** Use programming model v4 (required for Node 22).
 - Static data files in `data/` are the source of truth for Mystic Forge and vendor data — treat them like a versioned database, not throwaway config.

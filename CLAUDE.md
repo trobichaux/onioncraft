@@ -1,8 +1,14 @@
-# Guild Wars 2 Planner — Claude Code Instructions
+# OnionCraft — Claude Code Instructions
 
 ## Project Overview
 
-A planning tool for Guild Wars 2 players to manage builds, gear, crafting, and progression. This file defines how Claude should approach work in this repo, including which agents to spawn for which tasks and how to coordinate parallel workstreams.
+**OnionCraft** (`github.com/trobichaux/onioncraft`) is a Guild Wars 2 planning web app for crafting profit analysis and skin collection tracking. Hosted at `geekyonion.com`.
+
+Built with: **Next.js 14+ (App Router) · Azure Static Web Apps · Azure Table Storage · TypeScript**
+
+Design spec: `docs/superpowers/specs/2026-03-21-gw2-planner-design.md`
+
+This file defines how Claude should approach work in this repo, including which agents to spawn, Azure-specific conventions, and GW2 API context.
 
 ---
 
@@ -117,15 +123,136 @@ Step 4 — Reviewer agent (Opus) audits the combined output.
 
 ---
 
-## GW2-Specific Context for Agents
+## Azure Conventions & Gotchas
 
-Always include this context when prompting agents that touch GW2 data or API:
+These are hard-won rules for this specific stack. Follow them to avoid hours of debugging.
 
-- GW2 API base: `https://api.guildwars2.com/v2`
-- Key endpoints: `/items`, `/skills`, `/traits`, `/specializations`, `/builds`, `/characters`
-- The API is public for most read endpoints; some require an API key passed as `?access_token=`
-- Build templates use the `code` field (base64-encoded chatlink format)
-- Attribute names: Power, Precision, Toughness, Vitality, Concentration, Condition Damage, Expertise, Ferocity, Healing Power, Armor, Boon Duration, Critical Chance, Critical Damage, Condition Duration
+### Azure Static Web Apps + Next.js App Router
+
+- **Use `@azure/static-web-apps-cli`** (`swa` CLI) for local development — it accurately emulates SWA routing behavior. `next dev` alone will not catch SWA routing conflicts.
+- **`/api` routing conflict:** SWA intercepts requests to `/api/*` for its own managed functions. Next.js App Router API routes live at `app/api/` but SWA may hijack them. Always define route rewrites in `staticwebapp.config.json` to clarify ownership.
+- **`staticwebapp.config.json` is required** — dynamic routes (e.g. `[id]`, `[[...slug]]`) will 404 in production without explicit entries. Create this file at project root and keep it updated as routes are added.
+- **Known SWA + App Router issues:** Dynamic routes with `[param]` segments and route groups `(folder)` have historically caused 500/404 errors on SWA. Always test dynamic routes with `swa start` before deploying.
+- **Next.js version:** Pin to a version validated for SWA hybrid deployment. Check [SWA Next.js support docs](https://learn.microsoft.com/en-us/azure/static-web-apps/nextjs) before upgrading Next.js — SWA support lags behind Next.js releases.
+- **Environment variables:** Never use `NEXT_PUBLIC_` prefix for secrets. Table Storage connection string and GW2 API key go in SWA environment config (production) and `.env.local` (local dev). `.env.local` is gitignored — never commit it.
+
+### Azure Table Storage
+
+- **Package:** Always use `@azure/data-tables` (v12+). The legacy `azure-storage` npm package is deprecated and must not be used.
+- **Local development:** Use [Azurite](https://github.com/Azure/Azurite) to emulate Table Storage locally. Install via npm (`npm install -g azurite`) or Docker. Start with `azurite --silent --tableHost 127.0.0.1`.
+- **Azurite connection string** (use in `.env.local`):
+  ```
+  AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiqp;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
+  ```
+- **Entity serialization:** Table Storage properties are flat. Complex objects (exclusion lists, priority rules) are stored as JSON strings in a single `value` property. Max 64KB per entity — enforce this limit in the data access layer.
+- **Partition key design:** All user data uses `userId` as partition key. The price cache and skin catalog cache use `"shared"`. Never mix user-scoped and shared data in the same partition.
+- **Region co-location:** In production, deploy Table Storage in the same Azure region as the SWA to minimize latency.
+- **Authentication in production:** Use Managed Identity + RBAC, not connection strings, for production Table Storage access. Connection strings are acceptable for local dev only.
+
+### Azure Functions (via SWA API Routes)
+
+- **Cold starts:** SWA Consumption plan has notable cold starts for infrequently used apps. For personal use this is acceptable. If latency becomes an issue, upgrade to Flex Consumption plan.
+- **Timeout:** Default Azure Functions timeout is 5 minutes on Consumption plan. GW2 API bulk fetches (e.g., full skin catalog) can take time — ensure long-running operations complete within this window or implement pagination/chunking.
+- **Stateless:** Functions are stateless. All state lives in Table Storage. Never rely on in-memory state between requests.
+
+---
+
+## GW2 API Reference
+
+Always include this context when prompting agents that touch GW2 data or API.
+
+### Base URL & Auth
+- Base: `https://api.guildwars2.com/v2`
+- Public endpoints require no auth; account endpoints require `?access_token=<key>` or `Authorization: Bearer <key>` header
+- API key is stored server-side only — never pass it from the browser
+
+### Rate Limits
+- Approximately 600 requests/minute (not officially documented)
+- Bulk endpoints support up to **200 IDs per request** — always batch
+- Use max **5 concurrent requests** to stay safely under the limit
+- Retry on 429 and 503 with exponential backoff (up to 3 retries)
+
+### Key Endpoints
+
+| Endpoint | Auth | Notes |
+|----------|------|-------|
+| `/v2/account` | ✓ | Validate API key |
+| `/v2/account/inventory` | ✓ | Shared inventory slots |
+| `/v2/characters` | ✓ | List of character names |
+| `/v2/characters/:id/inventory` | ✓ | Character bag contents |
+| `/v2/account/bank` | ✓ | Bank storage |
+| `/v2/account/wallet` | ✓ | Currency balances |
+| `/v2/account/materials` | ✓ | Material storage tab |
+| `/v2/account/recipes` | ✓ | Recipes unlocked on account |
+| `/v2/account/skins` | ✓ | Skin IDs unlocked on account |
+| `/v2/recipes` | — | Crafting station recipe definitions (bulk, max 200) |
+| `/v2/recipes/search?output=<id>` | — | Find recipes by output item |
+| `/v2/items` | — | Item details (bulk, max 200) |
+| `/v2/skins` | — | Skin catalog (~90k entries; use bulk + cache) |
+| `/v2/commerce/prices` | — | TP buy/sell prices (bulk, max 200) |
+| `/v2/legendaryarmory` | — | Legendary item IDs and types |
+| `/v2/achievements` | — | Achievement details (bulk, max 200) |
+| `/v2/currencies` | — | Wallet currency definitions |
+
+### Trading Post Fee Formula
+GW2 charges two separate fees — use `ceil()` on each independently:
+```typescript
+const listingFee = Math.ceil(sellPrice * 0.05);  // paid upfront, non-refundable
+const exchangeFee = Math.ceil(sellPrice * 0.10); // deducted from proceeds
+const profit = sellPrice - listingFee - exchangeFee - craftingCost;
+```
+**Do not use `sellPrice * 0.85`** — this produces off-by-one copper errors on nearly every item due to independent rounding.
+
+### Known API Gaps (use static data files to fill)
+- **Mystic Forge recipes** are not in `/v2/recipes` → `data/mystic-forge-recipes.json`
+- **NPC vendor recipes/skins** are not reliably in the API → `data/vendor-recipes.json`
+- **Skin acquisition methods** (gem store, festival, story) have no API source → `data/skin-sources.json`
+- **Currency conversion ratios** (Spirit Shards → Philosopher's Stone, etc.) → `data/currency-conversions.json`
+
+### Recipe Tree Pattern (gw2efficiency-inspired)
+Split dependency graph resolution into two discrete functions — this is the proven pattern from [gw2efficiency/recipe-nesting](https://github.com/gw2efficiency/recipe-nesting):
+1. `buildRecipeTree(goalItemId)` — constructs the DAG from API + static data. Pure, cacheable.
+2. `calculateOverages(tree, inventory)` — walks the tree bottom-up, computes per-node overage. Pure, testable.
+
+Never combine these into one function.
+
+### Attribute Names (for build-related features)
+Power, Precision, Toughness, Vitality, Concentration, Condition Damage, Expertise, Ferocity, Healing Power, Armor, Boon Duration, Critical Chance, Critical Damage, Condition Duration
+
+---
+
+## Project Structure Conventions
+
+```
+/app                    # Next.js App Router pages and API routes
+  /api
+    /crafting           # Profit calc, goal resolution, price refresh
+    /skins              # Collection diff, unlock ranking
+    /settings           # Exclusion list, priority rules, API key CRUD
+    /gw2                # GW2 API proxy (avoids CORS, handles rate limits)
+/lib
+  auth.ts               # getRequestUser() stub — single auth seam
+  tableStorage.ts       # Azure Table Storage client wrapper
+  gw2Client.ts          # GW2 API client with retry/batching
+/data                   # Static JSON data files (versioned, manually maintained)
+  mystic-forge-recipes.json
+  currency-conversions.json
+  skin-sources.json
+  vendor-recipes.json
+/docs
+  /superpowers/specs    # Design specs
+staticwebapp.config.json  # REQUIRED — SWA routing config
+```
+
+### Auth Stub (do not remove until real auth is implemented)
+```typescript
+// lib/auth.ts
+export function getRequestUser(req: NextRequest): User {
+  // TODO: replace with real auth (Azure AD B2C, NextAuth, etc.)
+  return { id: "default", name: "You" };
+}
+```
+Every API route must call `getRequestUser()`. This is the single seam for future multi-user support.
 
 ---
 
@@ -203,3 +330,5 @@ High-signal workflow skills — prefer these over ad-hoc approaches for the task
 - Keep solutions minimal — no speculative abstractions or features beyond what is asked.
 - Do not commit unless explicitly asked.
 - When uncertain about scope, ask before spawning a large parallel workload.
+- Run `swa start` (not just `next dev`) when testing anything related to routing or API routes.
+- Static data files in `data/` are the source of truth for Mystic Forge and vendor data — treat them like a versioned database, not throwaway config.

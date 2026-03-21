@@ -291,6 +291,22 @@ POST /api/v1/crafting/refresh-prices
 
 ---
 
+## Azure Cost Management
+
+Azure Cost Management alerts must be configured as part of initial infrastructure setup. This is not application code but is a required infrastructure deliverable.
+
+| Alert type | Threshold | Action |
+|-----------|-----------|--------|
+| Budget warning | $75/month (50% of $150 credit) | Email notification |
+| Budget critical | $120/month (80% of $150 credit) | Email notification |
+| Weekly cost digest | Every Monday | Scheduled cost report via Azure Cost Management |
+
+**Note on MSDN subscription:** Azure suspends services (not charge a card) when the monthly credit is exhausted. Alerts provide early warning before suspension causes downtime. At the expected cost of ~$10–13/month there is ample headroom; alerts exist to catch unexpected resource misconfiguration.
+
+Setup steps are detailed in the implementation plan, not here.
+
+---
+
 ## Multi-Account & Auth Future Path
 
 - All Table Storage reads/writes use `userId` partition key from `getRequestUser()`

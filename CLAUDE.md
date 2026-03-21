@@ -203,11 +203,29 @@ const profit = sellPrice - listingFee - exchangeFee - craftingCost;
 ```
 **Do not use `sellPrice * 0.85`** — this produces off-by-one copper errors on nearly every item due to independent rounding.
 
+### Required API Key Permissions
+Always validate on key entry that all of these are present — show specific missing-permission errors:
+
+| Permission | Used for |
+|-----------|---------|
+| `account` | Basic account info, key validation |
+| `inventories` | Character bags, bank, shared inventory slots |
+| `wallet` | Currency balances |
+| `unlocks` | Recipes learned, skins unlocked |
+| `characters` | Character list and crafting disciplines |
+
+### Crafting Disciplines
+Recipes belong to disciplines (Weaponsmith, Armorsmith, Jeweler, Tailor, Leatherworker, Artificer, Huntsman, Chef, Scribe). Fetch per-character disciplines via `/v2/characters/:id/crafting`. Build a `{ discipline → maxLevel }` map across all characters. **Never show a recipe as craftable if the user lacks the required discipline at sufficient level** — this is a common bug in GW2 crafting tools.
+
+### Account-Bound Materials
+Check the `account_bind_on_use` and `account_bound` flags from `/v2/items`. Account-bound materials cannot be bought from the TP — flag them as "Must farm" rather than assigning a TP buy price. Never show a crafting cost that implies you can buy an account-bound material.
+
 ### Known API Gaps (use static data files to fill)
 - **Mystic Forge recipes** are not in `/v2/recipes` → `data/mystic-forge-recipes.json`
 - **NPC vendor recipes/skins** are not reliably in the API → `data/vendor-recipes.json`
 - **Skin acquisition methods** (gem store, festival, story) have no API source → `data/skin-sources.json`
 - **Currency conversion ratios** (Spirit Shards → Philosopher's Stone, etc.) → `data/currency-conversions.json`
+- **Daily/weekly craft production caps** (Charged Quartz Crystal: 1/day, etc.) → `data/craft-limits.json`
 
 ### Recipe Tree Pattern (gw2efficiency-inspired)
 Split dependency graph resolution into two discrete functions — this is the proven pattern from [gw2efficiency/recipe-nesting](https://github.com/gw2efficiency/recipe-nesting):
@@ -320,6 +338,18 @@ High-signal workflow skills — prefer these over ad-hoc approaches for the task
 | `simplify` | After a logical chunk of code is written — review and refine |
 | `loop` | Set up a recurring task or polling interval |
 | `update-config` | Modify `settings.json`, hooks, permissions, or env vars |
+
+---
+
+## Legal Requirements
+
+**Every page in the app must include the following disclaimer in the footer — no exceptions:**
+
+> OnionCraft is an unofficial fan project. Not affiliated with or endorsed by ArenaNet or NCSOFT. ©2010–present ArenaNet, LLC. Guild Wars 2 and all related marks are trademarks of NCSOFT Corporation.
+
+Full disclaimer text and API usage policy: `DISCLAIMER.md`
+
+When building any frontend page or shared layout component, verify the footer disclaimer is present. Do not ship a layout without it.
 
 ---
 

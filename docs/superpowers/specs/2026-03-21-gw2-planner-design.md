@@ -9,7 +9,7 @@ A personal web application for Guild Wars 2 players to manage crafting profit an
 
 ## Goals
 
-1. **Crafting Profit Calculator** — identify the most profitable craftable items given current TP prices, the player's known recipes, and material overages after accounting for a legendary ring goal.
+1. **Crafting Profit Calculator** — identify the most profitable craftable items given current TP prices, the player's known recipes (filtered by available crafting disciplines), and material overages after accounting for a legendary ring goal.
 2. **Skin Collection Tracker** — review unowned weapon/armor skins and prioritize unlock paths (direct buy, TP, achievement, etc.) using user-defined persistent priority rules.
 
 ### Non-Goals (for now)
@@ -28,7 +28,7 @@ A personal web application for Guild Wars 2 players to manage crafting profit an
   Next.js Web App          iOS / iPad App (future)
        ↕                          ↕
   ─────────────────────────────────────────────
-       Next.js API Routes (REST API)
+       Next.js API Routes (REST API, versioned at /api/v1/)
        Deployed as Azure Functions via SWA
   ─────────────────────────────────────────────
         ↕                         ↕
@@ -41,6 +41,7 @@ A personal web application for Guild Wars 2 players to manage crafting profit an
   data/currency-conversions.json
   data/skin-sources.json
   data/vendor-recipes.json
+  data/craft-limits.json
 ```
 
 ### Layers
@@ -51,17 +52,18 @@ A personal web application for Guild Wars 2 players to manage crafting profit an
 - Components receive a `user` object (currently `{ id: "default", name: "You" }`) — ready for real auth population
 
 **API Routes (Next.js route handlers → Azure Functions)**
+All routes versioned under `/api/v1/` to support future mobile app clients without breaking changes.
 Four route groups, all passing through `getRequestUser()` auth stub:
-- `/api/gw2/*` — GW2 API proxy with response caching and rate-limit handling
-- `/api/crafting/*` — profit calculation, dependency graph resolution, overage computation, goal progress
-- `/api/skins/*` — collection diff, unlock path ranking with user rules
-- `/api/settings/*` — CRUD for exclusion list, priority rules, API key, goal config
+- `/api/v1/gw2/*` — GW2 API proxy with response caching and rate-limit handling
+- `/api/v1/crafting/*` — profit calculation, dependency graph resolution, overage computation, goal progress
+- `/api/v1/skins/*` — collection diff, unlock path ranking with user rules
+- `/api/v1/settings/*` — CRUD for exclusion list, priority rules, API key, goal config
 
-Key routes within `/api/crafting/*`:
-- `POST /api/crafting/resolve-goal` — resolves the dependency tree for the selected ring, writes snapshot to GoalProgress table
-- `GET /api/crafting/goal-progress` — reads current GoalProgress snapshot for the user
-- `POST /api/crafting/refresh-prices` — fetches and caches TP prices
-- `GET /api/crafting/profit` — returns ranked profit table using cached prices + current snapshot
+Key routes within `/api/v1/crafting/*`:
+- `POST /api/v1/crafting/resolve-goal` — resolves the dependency tree for the selected ring, writes snapshot to GoalProgress table
+- `GET /api/v1/crafting/goal-progress` — reads current GoalProgress snapshot for the user
+- `POST /api/v1/crafting/refresh-prices` — fetches and caches TP prices
+- `GET /api/v1/crafting/profit` — returns ranked profit table using cached prices + current snapshot
 
 **Auth Stub**
 ```typescript
@@ -74,7 +76,7 @@ export function getRequestUser(req: NextRequest): User {
 Every API route calls this. Multi-user = swap this one function.
 
 **Static Recipe Data**
-The GW2 API (`/v2/recipes`) does not include Mystic Forge conversions or NPC vendor recipes. Static supplementary files (see Static Data Files section) cover these gaps. They are maintained manually and versioned in the repo.
+The GW2 API (`/v2/recipes`) does not include Mystic Forge conversions, NPC vendor recipes, daily craft limits, or account-bound flags. Static supplementary files cover these gaps. They are maintained manually and versioned in the repo. Each file includes a `lastVerified` top-level field (ISO date) — update this after verifying accuracy following major GW2 patches.
 
 **Azure Table Storage — Tables**
 
@@ -82,9 +84,10 @@ The GW2 API (`/v2/recipes`) does not include Mystic Forge conversions or NPC ven
 |-------|--------------|---------|-------|
 | `Settings` | `userId` | `exclusionList` / `priorityRules` / `apiKey` / `goalConfig` | JSON string in `value` property. Max 64KB per entity. |
 | `PriceCache` | `"shared"` | `itemId` | Fields: `buyPrice: number`, `sellPrice: number`, `cachedAt: string (ISO 8601)`. Never user-partitioned. |
-| `GoalProgress` | `userId` | `goalId` (= GW2 item ID of the legendary ring, e.g. `"91234"`) | JSON string in `value` property. Includes `resolvedAt: string (ISO 8601)`. |
+| `GoalProgress` | `userId` | `goalId` (= GW2 item ID of the legendary ring) | JSON string in `value` property. Includes `resolvedAt: string (ISO 8601)`. |
+| `SkinCache` | `"shared"` | `skinId` | Fields: `name`, `type`, `icon`, `cachedAt`. TTL: 24 hours. Never user-partitioned. |
 
-**GoalProgress snapshot** is refreshed on two triggers: (1) user selects a new goal, (2) user explicitly clicks "Refresh Inventory." The snapshot is point-in-time; the UI shows "Inventory last synced: X ago." Overage values in the snapshot are not recalculated live — the user must refresh to see updated values.
+**GoalProgress snapshot** is refreshed on two triggers: (1) user selects a new goal, (2) user explicitly clicks "Refresh Inventory." The snapshot is point-in-time; the UI shows "Inventory last synced: X ago."
 
 **Azure SWA / Next.js Compatibility Note**
 Azure Static Web Apps Next.js support (hybrid rendering + API routes as Functions) is validated for Next.js App Router. Local development uses Azurite to emulate Table Storage. Environment variables (Table Storage connection string) are managed via SWA environment config and `.env.local` for local dev.
@@ -96,56 +99,70 @@ Azure Static Web Apps Next.js support (hybrid rendering + API routes as Function
 The GW2 API is rate-limited (approximately 600 requests/minute) and periodically returns 503s. All API proxy routes implement:
 
 - **Retry with exponential backoff** — up to 3 retries on 429 or 503 responses
-- **Request batching** — bulk endpoints (e.g. `/v2/commerce/prices`, `/v2/items`) called in batches of 200 IDs, max 5 concurrent requests
+- **Request batching** — bulk endpoints called in batches of 200 IDs, max 5 concurrent requests
 - **User-facing error states** — invalid/expired API key shows inline error prompting re-entry; API unavailability shows banner with last-successful-fetch time
-- **Graceful degradation** — if TP prices cannot be refreshed, UI shows stale-price warning and continues with cached values
-- **Revoked/invalid stored key** — if a stored key returns 401/403, the server marks it invalid (does not delete it). The UI enters a "key expired" state prompting re-entry. The old key is overwritten on re-entry.
+- **Graceful degradation** — stale-price warning shown if refresh fails; app continues with cached values
+- **Revoked/invalid stored key** — if stored key returns 401/403, server marks it invalid (does not delete it). UI enters "key expired" state prompting re-entry. Old key overwritten on re-entry.
+- **Permission validation** — on key entry, validate that all required permissions are present. Show a specific error if any are missing (e.g. "Your API key is missing the 'inventories' permission").
+
+### Required API Key Permissions
+| Permission | Used for |
+|-----------|---------|
+| `account` | Basic account info, key validation |
+| `inventories` | Character bags, bank, shared inventory slots |
+| `wallet` | Currency balances |
+| `unlocks` | Recipes learned, skins unlocked |
+| `characters` | Character list and crafting disciplines |
 
 ---
 
 ## Feature 1: Crafting Profit Calculator
 
 ### GW2 API Endpoints Used
-- `/v2/account` — validate API key
+- `/v2/account` — validate API key and check permissions
 - `/v2/account/inventory` — shared inventory
+- `/v2/characters` — list of character names
 - `/v2/characters/:id/inventory` — character bags
+- `/v2/characters/:id/crafting` — crafting disciplines and levels per character
 - `/v2/account/bank` — bank storage
 - `/v2/account/wallet` — currencies
 - `/v2/account/materials` — material storage
 - `/v2/account/recipes` — recipes the account has learned
 - `/v2/recipes` — recipe definitions (crafting station recipes only)
-- `/v2/items` — item details
+- `/v2/items` — item details (including `account_bind_on_use` and `account_bound` flags)
 - `/v2/commerce/prices` — TP buy/sell prices (bulk, batched)
 - `/v2/legendaryarmory` — legendary item IDs (entry point for goal list)
 
 ### Supported Legendary Ring Goals (v1)
-The legendary ring list is seeded from `/v2/legendaryarmory` filtered to `type: "Ring"`. Each ring's dependency tree is resolved starting from its item ID. Mystic Forge steps fall back to `data/mystic-forge-recipes.json`.
+The legendary ring list is seeded from `/v2/legendaryarmory`, then cross-referenced with `/v2/items` to filter to `type: "Ring"`. Each ring's dependency tree is resolved starting from its item ID. Mystic Forge steps fall back to `data/mystic-forge-recipes.json`.
 
 ### User Flow
-1. User sets their GW2 API key once (stored server-side, never returned to client)
-2. User selects their legendary ring goal from a list populated from `/v2/legendaryarmory`
-3. App fetches: shared inventory, character inventories, bank, material storage, wallet, and learned recipes
-4. App resolves the full dependency tree (`POST /api/crafting/resolve-goal`), using `/v2/recipes` for crafting station steps and `data/mystic-forge-recipes.json` for Mystic Forge steps. Snapshot persisted to GoalProgress with `resolvedAt` timestamp.
+1. User sets their GW2 API key once (stored server-side, never returned to client). App validates the key has all required permissions (see above) and shows specific missing-permission errors if not.
+2. User selects their legendary ring goal from a list
+3. App fetches: shared inventory, all character inventories, bank, material storage, wallet, learned recipes, and **crafting disciplines for each character**
+4. App resolves the full dependency tree (`POST /api/v1/crafting/resolve-goal`). Snapshot persisted to GoalProgress with `resolvedAt` timestamp.
 5. App walks the tree bottom-up to compute overages (see Dependency Graph section)
 6. User refreshes TP prices on demand. UI shows "Prices last updated: X ago."
-7. App computes profit for all craftable recipes (learned + TP-unlockable + vendor), excludes exclusion list items, and presents ranked table
+7. App computes profit for all craftable recipes — filtered to disciplines available on the account — excludes exclusion list items, presents ranked table
 8. Overage materials from step 5 reduce `crafting_cost` (their effective cost = 0)
+
+### Crafting Discipline Filtering
+GW2 recipes belong to a crafting discipline (Weaponsmith, Armorsmith, Jeweler, Tailor, Leatherworker, Artificer, Huntsman, Chef, Scribe). A recipe is only craftable if at least one character has the required discipline at sufficient level.
+
+- Fetch disciplines via `GET /v2/characters/:id/crafting` for all characters
+- Build a map of `{ discipline → maxLevel }` across all characters
+- Filter the craftable recipe list to only include recipes where the required discipline and level are met
+- Show discipline as an additional column in the results table ("Weaponsmith 400")
+
+A recipe marked `Learned` but belonging to an unleveled discipline is excluded from the profit table — the user cannot craft it.
 
 ### Dependency Graph Resolution
 
-Materials are modeled as a DAG where leaf nodes are raw materials/currencies and the root is the legendary ring. Edges represent crafting or conversion relationships. Recipe sources: `/v2/recipes` (crafting station) and `data/mystic-forge-recipes.json` (Mystic Forge).
+Materials are modeled as a DAG where leaf nodes are raw materials/currencies and the root is the legendary ring.
 
-**Overage calculation (concrete example):**
+**Overage example:** A ring recipe requires 10 Mithril Ingots; player holds 15. Overage = 5. These 5 ingots are available for profitable crafting. If two profitable recipes both use Mithril Ingots, the overage is allocated greedily — highest-profit recipe gets first claim. Surplus at one node does not reduce requirements at sibling nodes.
 
-Suppose a ring recipe requires 10 Mithril Ingots, and the player holds 15. Overage = 5. These 5 ingots are available for use in profitable crafting recipes. If two profitable recipes each use Mithril Ingots, the overage is allocated greedily — the highest-profit recipe gets first claim on the surplus, reducing its effective crafting cost.
-
-Overage is computed per-item across the full dependency tree. Surplus at one node does not reduce requirements at a sibling node (e.g., extra Mithril Ingots don't count toward a Mithril Ore requirement).
-
-**Currency modeling:**
-
-Gold is the denomination of cost, not a DAG node. It is not modeled with conversion edges; it is the unit in which all crafting costs and sell prices are expressed.
-
-The following non-gold currencies are modeled as DAG nodes with explicit conversion edges defined in `data/currency-conversions.json`:
+**Currency modeling:** Gold is the unit of cost, not a DAG node. Non-gold currencies modeled as DAG nodes with conversion edges defined in `data/currency-conversions.json`:
 
 | Currency | Conversion target | Direction |
 |----------|------------------|-----------|
@@ -154,42 +171,46 @@ The following non-gold currencies are modeled as DAG nodes with explicit convers
 | Laurels | Specific vendor items | one-way |
 | Karma | Specific vendor items | one-way |
 
-`data/currency-conversions.json` example schema:
+### Account-Bound Materials
+Some materials are account-bound (`account_bind_on_use` or `account_bound` flag in `/v2/items`) and cannot be purchased from the TP. These are handled as follows:
+- In the **dependency tree**: account-bound materials show current holdings only; no TP buy price is assigned. If holdings are insufficient, the shortfall is flagged as "Must farm — cannot buy."
+- In the **profit table**: recipes that require account-bound materials the user does not have enough of are flagged with a warning icon rather than excluded entirely.
+
+### Daily Craft Limits
+Some profitable items have daily or weekly production caps (e.g., Charged Quartz Crystals: 1/day). These are defined in `data/craft-limits.json`. In the profit table:
+- A "Daily cap: N" badge is shown on affected items
+- The profit column reflects a single craft, not unlimited throughput
+- Items with daily caps are not ranked above uncapped items of similar per-craft profit
+
+`data/craft-limits.json` schema:
 ```json
-[
-  {
-    "currencyId": 23,
-    "currencyName": "Spirit Shards",
-    "outputItemId": 9480,
-    "outputItemName": "Philosopher's Stone",
-    "ratio": 1,
-    "context": "mystic_forge"
-  }
-]
+{
+  "lastVerified": "2026-03-21",
+  "limits": [
+    { "itemId": 43772, "itemName": "Charged Quartz Crystal", "dailyCap": 1, "resetType": "daily" }
+  ]
+}
 ```
 
 ### Exclusion List
-- Stored as JSON string in `Settings` table (row: `exclusionList`), per user
-- Managed via persistent UI panel: add/remove items by name or ID search
-- Applied as a filter before the profit ranking is rendered
+- JSON string in `Settings` table (row: `exclusionList`), per user
+- Persistent UI panel: add/remove items by name or ID search
+- Applied as filter before profit ranking is rendered
 
 ### Profit Calculation
-GW2 TP charges two fees:
-- **Listing fee:** `ceil(sell_price * 0.05)` — paid upfront, non-refundable
-- **Exchange fee:** `ceil(sell_price * 0.10)` — deducted from sale proceeds
-
 ```
 profit = sell_price - ceil(sell_price * 0.05) - ceil(sell_price * 0.10) - crafting_cost
 ```
+- Listing fee (5%): paid upfront, non-refundable
+- Exchange fee (10%): deducted from sale proceeds
+- `crafting_cost`: overage materials cost 0; account-bound shortfalls flagged; remaining materials at TP buy-order price
 
-`crafting_cost` uses overage-adjusted quantities (overage materials cost 0; remaining materials valued at current TP buy-order price).
+**Craftable recipe list** includes:
+- All recipes from `/v2/account/recipes` where the required discipline + level is met by at least one character
+- Recipes from `/v2/recipes` whose recipe item is TP-tradeable, where discipline is met
+- All entries in `data/vendor-recipes.json` where discipline is met
 
-The **craftable recipe list** for profit calculation includes:
-- All recipes from `/v2/account/recipes` (learned by the account)
-- All recipes from `/v2/recipes` whose recipe item is tradeable on TP (has a `/v2/commerce/prices` entry)
-- All recipes in `data/vendor-recipes.json`
-
-Only recipes whose output item is tradeable (has a `/v2/commerce/prices` entry) are included — untradeable outputs have no profit calculation.
+Only recipes whose output is tradeable (has a `/v2/commerce/prices` entry) are included.
 
 **Results table columns:**
 
@@ -199,6 +220,8 @@ Only recipes whose output item is tradeable (has a `/v2/commerce/prices` entry) 
 | Crafting Cost | Gold cost after overage adjustment |
 | Sell Price | Current TP sell listing price |
 | Profit | Net after both TP fees |
+| Discipline | Required discipline and level |
+| Daily Cap | Badge if item has a production limit |
 | Source | `Learned` / `TP Recipe` / `Vendor Recipe` |
 | Exclude | Toggle to add/remove from exclusion list |
 
@@ -208,61 +231,50 @@ Only recipes whose output item is tradeable (has a `/v2/commerce/prices` entry) 
 
 ### GW2 API Endpoints Used
 - `/v2/account/skins` — skin IDs unlocked on account
-- `/v2/skins` — full skin catalog (bulk)
+- `/v2/skins` — full skin catalog (bulk, cached in SkinCache table)
 - `/v2/commerce/prices` — check if skin unlock item is TP-tradeable
 - `/v2/achievements` — cross-reference achievement-gated skins
 
 ### Skin Catalog Caching Strategy
-`/v2/skins` returns ~90,000+ skin IDs. The full catalog is cached in Table Storage with a 24-hour TTL — skins are added infrequently and never removed. On first load (or cache miss), the API fetches all IDs, then fetches metadata in batches of 200 (max 5 concurrent). Subsequent loads use the cache. The user can force a refresh via a manual "Refresh Skin Catalog" button.
+`/v2/skins` returns ~90,000+ skin IDs. The full catalog is cached in the `SkinCache` Table Storage table with a 24-hour TTL. On cache miss: fetch all IDs, then fetch metadata in batches of 200 (max 5 concurrent). Manual "Refresh Skin Catalog" button available. Progress indicator shown during initial fetch (can take several minutes).
 
 ### User Flow
-1. App loads skin catalog from cache (or fetches if stale/missing)
-2. App fetches account's unlocked skin IDs via `/v2/account/skins`
+1. Load skin catalog from SkinCache (or fetch if stale)
+2. Fetch account's unlocked skin IDs
 3. Diff: unowned = catalog minus account skins
-4. Each unowned skin is categorized by acquisition method
-5. User-defined priority rules rank the results
-6. Results displayed as a filterable, sortable table
+4. Categorize each unowned skin by acquisition method
+5. Apply user priority rules
+6. Display as filterable, sortable table
 
 ### Acquisition Method Categories
 
 | Method | How determined |
 |--------|---------------|
-| `trading_post` | Skin's unlock item has a listing in `/v2/commerce/prices` |
+| `trading_post` | Unlock item has listing in `/v2/commerce/prices` |
 | `achievement` | Cross-referenced via `/v2/achievements` |
-| `direct_buy` | Listed in `data/vendor-recipes.json` vendor data |
+| `direct_buy` | Listed in `data/vendor-recipes.json` |
 | `gem_store` | Listed in `data/skin-sources.json` |
-| `content_drop` | Listed in `data/skin-sources.json` (Black Lion Chest, festival, story) |
-| `unknown` | No API or static data available — wiki URL provided as fallback |
+| `content_drop` | Listed in `data/skin-sources.json` |
+| `unknown` | No data available — wiki URL provided as fallback |
 
-**Coverage expectation:** Many skins have no API-discoverable acquisition path and will land in `unknown` in v1. `data/skin-sources.json` will be built out incrementally to reduce unknowns over time.
+**Achievement cross-referencing:** `/v2/achievements` returns reward lists that may reference skin IDs. Match on `rewards[].type == "Skin"` and `rewards[].id == skinId`. Not all achievement-gated skins are discoverable this way — `data/skin-sources.json` supplements gaps.
 
 ### Priority Rules
-- Stored as JSON string in `Settings` table (row: `priorityRules`), per user
-- Ordered list of conditions; first match wins:
-  ```
-  1. method = "direct_buy" AND cost < 5g → priority 1
-  2. method = "trading_post" AND cost < 20g → priority 2
-  3. method = "achievement" → priority 3
-  4. (default) → priority 99
-  ```
-- UI: drag-and-drop rule editor with condition builder (method, cost threshold, skin type filter)
+- JSON string in `Settings` table (row: `priorityRules`), per user
+- Ordered conditions, first match wins
+- UI: drag-and-drop rule editor with condition builder (method, cost threshold, skin type)
 
 ---
 
 ## Data Flow: TP Price Refresh
 
 ```
-User clicks "Refresh Prices"
-  → POST /api/crafting/refresh-prices
-  → Builds item ID list:
-      - All items in active GoalProgress snapshot dependency tree
-      - All items in craftable recipe list (learned + TP-unlockable + vendor)
-  → Fetches /v2/commerce/prices in batches of 200 IDs
-      (max 5 concurrent, retry on 429/503)
-  → Writes to PriceCache table:
-      partition: "shared", row: itemId
-      fields: buyPrice, sellPrice, cachedAt (ISO 8601)
-  → Returns { updatedAt: ISO timestamp, count: N }
+POST /api/v1/crafting/refresh-prices
+  → Build item ID list from GoalProgress snapshot + craftable recipe list
+  → Fetch /v2/commerce/prices in batches of 200 (max 5 concurrent, retry on 429/503)
+  → Write to PriceCache (partition: "shared", row: itemId,
+      fields: buyPrice, sellPrice, cachedAt)
+  → Return { updatedAt, count }
   → UI shows "Prices last updated: X minutes ago"
 ```
 
@@ -270,38 +282,41 @@ User clicks "Refresh Prices"
 
 ## Multi-Account & Auth Future Path
 
-- All Table Storage reads/writes use `userId` from `getRequestUser()` as partition key
-- Price cache and skin catalog cache use `"shared"` partition — never user-scoped
-- All downstream code is already correct when real auth replaces the stub
-- Frontend `user` object already threaded through components
+- All Table Storage reads/writes use `userId` partition key from `getRequestUser()`
+- Price cache and skin catalog cache use `"shared"` partition
+- Frontend `user` object threaded through all components
+- **SWA tier note:** Custom authentication (Azure AD B2C / NextAuth) requires SWA Standard tier (~$9/month). Free tier supports only SWA built-in auth providers.
 
 ### Mobile App Path
-- All features exposed via REST API routes
-- React Native / Expo or Swift app consumes the same endpoints
-- If React Native: extract shared types and API client into `/packages/core`
+- All features exposed via versioned REST API routes (`/api/v1/`)
+- Version prefix enables non-breaking mobile client updates
+- React Native / Expo (preferred) or Swift consumes same endpoints
+- If React Native: `/packages/core` for shared types and API client
 - Auth tokens (JWT) work for both web and mobile consumers
 
 ---
 
 ## Security Notes
 
-- GW2 API key stored server-side in Azure Table Storage — never returned to client or logged
-- All GW2 API calls proxied through server-side API routes
+- GW2 API key stored server-side only — never returned to client or logged
+- All GW2 API calls proxied through API routes
 - `getRequestUser()` stub is the single auth seam
-- **Future:** full security audit before multi-user rollout or public deployment
+- API key permissions validated on entry — specific missing-permission errors shown
+- **Future:** full security audit before multi-user rollout; review ArenaNet API ToS before public launch
 
 ---
 
 ## Static Data Files
 
-| File | Purpose | Schema |
-|------|---------|--------|
-| `data/mystic-forge-recipes.json` | Mystic Forge recipe definitions (not in GW2 API) | `[{ inputs: [{itemId, count}], output: {itemId, count} }]` |
-| `data/currency-conversions.json` | Wallet currency → item conversion ratios | `[{ currencyId, currencyName, outputItemId, outputItemName, ratio, context }]` |
-| `data/skin-sources.json` | Supplementary skin acquisition metadata | `[{ skinId, method, notes }]` |
-| `data/vendor-recipes.json` | NPC vendor recipe and skin listings | `[{ itemId, vendorName, cost, costCurrencyId }]` |
+All files include a top-level `lastVerified` field. Update this date after verifying accuracy following major GW2 patches.
 
-All files versioned in the repo and updated manually as game content changes.
+| File | Purpose | Schema hint |
+|------|---------|-------------|
+| `data/mystic-forge-recipes.json` | Mystic Forge recipes (not in GW2 API) | `{ lastVerified, recipes: [{ inputs: [{itemId, count}], output: {itemId, count} }] }` |
+| `data/currency-conversions.json` | Currency → item conversion ratios | `{ lastVerified, conversions: [{ currencyId, currencyName, outputItemId, outputItemName, ratio, context }] }` |
+| `data/skin-sources.json` | Supplementary skin acquisition metadata | `{ lastVerified, skins: [{ skinId, method, notes }] }` |
+| `data/vendor-recipes.json` | NPC vendor recipe and skin listings | `{ lastVerified, vendors: [{ itemId, vendorName, cost, costCurrencyId }] }` |
+| `data/craft-limits.json` | Daily/weekly crafting production caps | `{ lastVerified, limits: [{ itemId, itemName, dailyCap, resetType }] }` |
 
 ---
 
@@ -310,23 +325,25 @@ All files versioned in the repo and updated manually as game content changes.
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 14+ (App Router), React, TypeScript |
-| Backend | Next.js API Routes → Azure Functions |
+| Backend | Next.js API Routes (`/api/v1/`) → Azure Functions |
 | Persistence | Azure Table Storage |
 | Local dev emulation | Azurite |
-| Hosting | Azure Static Web Apps |
+| Hosting | Azure Static Web Apps (Free tier; Standard tier needed for custom auth) |
 | Dev tooling | ESLint, Prettier |
-| Testing | Jest (unit), Playwright (e2e) |
+| Testing | Jest (unit + GW2 API fixtures in `/fixtures/gw2/`), Playwright (e2e) |
 | Future mobile | React Native / Expo (preferred) or Swift |
 
 ---
 
 ## Out of Scope (Future Milestones)
 
-- Real authentication (Azure AD B2C / NextAuth)
+- Real authentication (Azure AD B2C / NextAuth) — requires SWA Standard tier
 - Multi-user support
-- Security audit
+- Security audit (before multi-user or public launch)
+- ArenaNet Fan Content Policy review (before public launch at geekyonion.com)
 - iOS / iPad app
 - Profit/Hour estimation
-- CI/CD pipeline
+- CI/CD pipeline via GitHub Actions
 - Wiki scraping automation
 - Notifications / alerts for price thresholds
+- GW2 API response fixture library for testing (`/fixtures/gw2/`)

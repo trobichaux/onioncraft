@@ -24,7 +24,7 @@ jest.mock('@/lib/auth', () => ({
 // ---------------------------------------------------------------------------
 
 function makeRequest(method: string, body?: unknown): NextRequest {
-  const init: RequestInit = { method };
+  const init: Record<string, unknown> = { method };
   if (body !== undefined) {
     init.headers = { 'Content-Type': 'application/json' };
     init.body = JSON.stringify(body);

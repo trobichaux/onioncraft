@@ -36,7 +36,7 @@ jest.mock('@/lib/gw2Client', () => {
 // ---------------------------------------------------------------------------
 
 function makeRequest(method: string, body?: object): NextRequest {
-  const init: RequestInit = { method };
+  const init: Record<string, unknown> = { method };
   if (body) {
     init.headers = { 'Content-Type': 'application/json' };
     init.body = JSON.stringify(body);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatCoins } from '@/lib/formatCurrency';
 
 interface ProfitItem {
   itemId: number;
@@ -112,12 +113,12 @@ export default function ProfitTable() {
                 </span>
               )}
             </td>
-            <td>{item.sellPrice}</td>
-            <td>{item.craftingCost}</td>
-            <td>{item.listingFee}</td>
-            <td>{item.exchangeFee}</td>
-            <td style={{ color: item.profit >= 0 ? 'green' : 'red' }}>{item.profit}</td>
-            <td style={{ color: item.roi >= 0 ? 'green' : 'red' }}>{item.roi}%</td>
+            <td>{formatCoins(item.sellPrice)}</td>
+            <td>{formatCoins(item.craftingCost)}</td>
+            <td>{formatCoins(item.listingFee)}</td>
+            <td>{formatCoins(item.exchangeFee)}</td>
+            <td className={item.profit >= 0 ? 'text-profit' : 'text-loss'}>{formatCoins(item.profit)}</td>
+            <td className={item.roi >= 0 ? 'text-profit' : 'text-loss'}>{item.roi.toFixed(1)}%</td>
           </tr>
         ))}
       </tbody>

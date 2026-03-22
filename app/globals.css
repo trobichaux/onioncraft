@@ -389,6 +389,134 @@ footer {
   font-family: monospace;
 }
 
+/* Price range filter */
+.price-range-filter {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.price-range-filter > label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.price-range-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.price-range-value {
+  padding: 0.25rem 0.5rem;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-range-separator {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.price-range-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.range-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.range-slider-group label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  width: 2rem;
+  flex-shrink: 0;
+}
+
+.range-slider-group input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--color-border);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.range-slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.range-slider-group input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* GW2 Currency display */
+.coins {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.coin-icon {
+  font-weight: 700;
+  font-size: 0.8em;
+  margin-left: 1px;
+}
+
+.coin-gold .coin-icon {
+  color: #ffd700;
+}
+
+.coin-silver .coin-icon {
+  color: #c0c0c0;
+}
+
+.coin-copper .coin-icon {
+  color: #cd7f32;
+}
+
+.coin-negative {
+  color: var(--color-loss);
+}
+
+.text-profit {
+  color: var(--color-profit);
+}
+
+.text-loss {
+  color: var(--color-loss);
+}
+
 /* Info / help boxes */
 .info-box {
   padding: 1rem 1.25rem;

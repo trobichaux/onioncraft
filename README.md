@@ -2,9 +2,49 @@
 
 A Guild Wars 2 planning tool for crafting profit analysis and skin collection tracking.
 
+**Live at:** [onioncraft.geekyonion.com](https://onioncraft.geekyonion.com)
+
 **Stack:** Next.js 14.x · Azure Static Web Apps · Azure Table Storage · TypeScript · Node.js 22
 
-**Hosted at:** geekyonion.com _(coming soon)_
+---
+
+## Getting Started
+
+### 1. Log in with GitHub
+
+Visit [onioncraft.geekyonion.com](https://onioncraft.geekyonion.com) and click **Login** in the top-right corner. Authentication is handled via GitHub — no separate account needed.
+
+### 2. Create a GW2 API Key
+
+Go to the [Guild Wars 2 API Key Management](https://account.arena.net/applications) page and create a new key with these permissions:
+
+| Permission | What OnionCraft uses it for |
+|---|---|
+| **account** | Basic account info and guild memberships |
+| **inventories** | Bank, material storage, and character inventories |
+| **wallet** | Currencies (gold, karma, spirit shards) |
+| **unlocks** | Unlocked skins, dyes, recipes, and minis |
+| **characters** | Character names, levels, and crafting disciplines |
+
+> 💡 Name the key something like "OnionCraft" so you can identify it later.
+
+### 3. Save your API Key
+
+Navigate to the **[Settings](https://onioncraft.geekyonion.com/settings)** page, paste your key, and click **Save**. OnionCraft validates the key against the GW2 API and checks that all required permissions are present. Your key is stored server-side and is **never returned to the browser or logged**.
+
+### 4. Use the Crafting Calculator
+
+1. Go to **[Crafting](https://onioncraft.geekyonion.com/crafting)**
+2. Add **Crafting Goals** — items you're saving materials for (e.g. legendaries). Materials needed for these goals are reserved and excluded from profit calculations.
+3. Click **Refresh Prices** to fetch current Trading Post prices
+4. The **Profitable Crafts** table shows the most profitable items you can craft from your remaining inventory, sorted by total profit, with quantities
+
+### 5. Use the Skin Collection Tracker
+
+1. Go to **[Skins](https://onioncraft.geekyonion.com/skins)**
+2. Click **Refresh Skin Catalog** to load the full GW2 skin database (~10,000 skins)
+3. Your **Collection Progress** shows total/owned/unowned counts with a progress bar
+4. The **Unowned Skins** table shows what you're missing, with TP prices in gold/silver/copper, acquisition method, and a price range slider to filter by budget
 
 ---
 
@@ -12,22 +52,24 @@ A Guild Wars 2 planning tool for crafting profit analysis and skin collection tr
 
 ### Crafting Profit Calculator
 
-Finds the most profitable items to craft given current Trading Post prices, accounting for:
+Identifies the most profitable items to craft from your inventory, after reserving materials for goals:
 
-- **Multi-goal material reservations** — overage computed across ALL active legendary goals simultaneously, not per-goal
+- **Inventory-aware** — reads your bank and material storage via the GW2 API
+- **Goal reservation** — materials for active goals (legendaries, collections) are held back via `calculateOverages()` across ALL goals simultaneously
+- **Quantity calculation** — `maxCraftableFromInventory()` tells you how many of each item you can make from remaining materials
 - **Accurate TP fees** — independent `Math.ceil` on listing (5%) and exchange (10%) fees; never uses the `×0.85` shortcut that produces off-by-one copper errors
 - **Recipe tree resolution** — recursive DAG including Mystic Forge recipes and vendor-only ingredients
-- **Account-bound detection** — flags materials that must be farmed, never assigns a buy price
-- **Daily craft limits** — items like Silk Weaving Thread shown with cap badges
-- **Exclusion list** — hide items you don't want to see
+- **Daily craft limits** — items like Lump of Mithrillium shown with cap badges
+- **Gold/silver/copper display** — all prices shown in standard GW2 currency format
 
 ### Skin Collection Tracker
 
-Shows unowned weapon/armor skins ranked by user-defined priority rules:
+Shows unowned weapon/armor skins ranked by acquisition method:
 
 - **Acquisition categorization** — Trading Post, achievement reward, vendor, Gem Store, content drop, or unknown (with wiki link)
+- **Price range slider** — filter skins by TP price budget (min/max in gold/silver/copper)
 - **Priority rules engine** — weighted scoring by type, rarity, or acquisition method
-- **Catalog caching** — ~90k skins cached in Azure Table Storage with 24h TTL
+- **Catalog caching** — ~10k skins cached in Azure Table Storage
 - **Collection stats** — total/owned/unowned counts with progress bar
 
 ## Architecture
@@ -119,7 +161,7 @@ npm run dev:swa      # Full SWA local dev (recommended)
 npm run build        # Production build
 npm run lint         # ESLint + Prettier check
 npm run lint:fix     # Auto-fix lint issues
-npm test             # Jest unit tests (197 tests)
+npm test             # Jest unit tests (230 tests)
 npm run test:watch   # Jest in watch mode
 npm run test:e2e     # Playwright e2e tests
 npm run type-check   # TypeScript type checking
@@ -137,24 +179,27 @@ lib/
   auth.ts             getRequestUser() — single auth seam
   gw2Client.ts        GW2 API client with resilience pipeline
   tableStorage.ts     Azure Table Storage CRUD (4 tables)
-  schemas.ts          Zod validation schemas
-  validation.ts       Request body validation middleware
-  recipeTree.ts       Recipe tree DAG + multi-goal overage calc
+  inventory.ts        Fetch player bank + material storage
+  recipeTree.ts       Recipe tree DAG + overage calc + craftable quantity
   profitCalc.ts       TP fee math + crafting cost computation
   skinCatalog.ts      Skin acquisition categorization + priority rules
+  formatCurrency.tsx  Gold/silver/copper display components
+  schemas.ts          Zod validation schemas
+  validation.ts       Request body validation middleware
   resilience/
-    circuitBreaker.ts Token bucket rate limiter
+    circuitBreaker.ts Per-category circuit breaker
     retryWithBackoff.ts Exponential backoff (429/503)
-    rateLimiter.ts    Per-category circuit breaker
+    rateLimiter.ts    Token bucket rate limiter
 data/
-  mystic-forge-recipes.json   Mystic Forge recipes (not in GW2 API)
-  craft-limits.json           Daily/weekly crafting caps
-  currency-conversions.json   Currency → item conversion ratios
-  vendor-recipes.json         NPC vendor listings
-  skin-sources.json           Supplementary skin acquisition metadata
-fixtures/gw2/                 GW2 API response snapshots for testing
-docs/                         Design specs and documentation
-staticwebapp.config.json      SWA routing + security headers
+  mystic-forge-recipes.json     Mystic Forge recipes (not in GW2 API)
+  profitable-candidates.json    Curated list of profitable craftable items
+  craft-limits.json             Daily/weekly crafting caps
+  currency-conversions.json     Currency → item conversion ratios
+  vendor-recipes.json           NPC vendor listings
+  skin-sources.json             Supplementary skin acquisition metadata
+fixtures/gw2/                   GW2 API response snapshots for testing
+docs/                           Design specs, deployment guide, security review
+staticwebapp.config.json        SWA routing + auth + security headers
 ```
 
 ## Implementation Progress
@@ -164,11 +209,21 @@ staticwebapp.config.json      SWA routing + security headers
 | 0 | ✅ Done | Project scaffold, layout, auth stub |
 | 1 | ✅ Done | GW2 API client with Circuit Breaker, Retry, Rate Limiter |
 | 2 | ✅ Done | Table Storage data layer, Zod schemas, CRUD operations |
-| 3 | ✅ Done | Settings & API key management (validation, never-return-key) |
-| 4 | ✅ Done | Crafting profit calculator (recipe tree, overage, TP fees) |
-| 5 | ✅ Done | Skin collection tracker (catalog caching, priority rules) |
+| 3 | ✅ Done | Settings & API key management (validation, permission check) |
+| 4 | ✅ Done | Crafting profit calculator (inventory, recipe tree, overage, TP fees) |
+| 5 | ✅ Done | Skin collection tracker (catalog caching, price range filter) |
 | 6 | ✅ Done | CI/CD pipeline (GitHub Actions, CodeQL, SWA deployment) |
 | 7 | ✅ Done | Security hardening (OWASP audit, CSP headers, rate limiting) |
+
+## Deployment
+
+- **Hosting:** Azure Static Web Apps (Free tier) with hybrid Next.js rendering
+- **Storage:** Azure Table Storage (`onioncraftstorage`, Standard_LRS)
+- **Domain:** `onioncraft.geekyonion.com` (CNAME via Cloudflare, auto-TLS by Azure)
+- **Auth:** SWA Built-in Auth (GitHub provider)
+- **CI/CD:** GitHub Actions — lint → type-check → test → build → deploy on every push to `main`
+
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for full deployment guide and billing controls.
 
 ## Contributing
 

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getRequestUser } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rateLimit';
 import { getSetting, putSetting, deleteSetting } from '@/lib/tableStorage';
 import { validateRequestBody } from '@/lib/validation';
 import { Gw2Client, Gw2ApiError, REQUIRED_PERMISSIONS } from '@/lib/gw2Client';
@@ -18,7 +19,21 @@ interface TokenInfoResponse {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = getRequestUser(req);
 
-  const parsed = await validateRequestBody(req, PostBodySchema);
+  const rateLimit = checkRateLimit(user.id);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+        },
+      },
+    );
+  }
+
+  const parsed= await validateRequestBody(req, PostBodySchema);
   if ('error' in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: parsed.status });
   }
@@ -66,12 +81,42 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   const user = getRequestUser(req);
+
+  const rateLimit = checkRateLimit(user.id);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+        },
+      },
+    );
+  }
+
   await deleteSetting(user.id, 'apiKey');
   return NextResponse.json({ success: true });
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = getRequestUser(req);
+
+  const rateLimit = checkRateLimit(user.id);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+          'X-RateLimit-Remaining': String(rateLimit.remaining),
+        },
+      },
+    );
+  }
+
   const raw = await getSetting(user.id, 'apiKey');
 
   if (!raw) {

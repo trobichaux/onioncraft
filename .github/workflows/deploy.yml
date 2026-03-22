@@ -1,0 +1,41 @@
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write # For OIDC auth with Azure (can be configured later for keyless auth)
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # Don't cancel active deployments
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx next lint
+      - run: npx tsc --noEmit
+      - run: npx jest --ci
+      - run: npx next build
+
+      # NOTE: OIDC-based keyless auth can replace the API token once
+      # Azure federated credentials are configured for this repository.
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@4d27395fb6bbacbebe2b0e86fc83b15ae09b9c21 # v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: /
+          output_location: .next
+          skip_app_build: true # Already built above

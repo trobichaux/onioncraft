@@ -55,8 +55,9 @@ function makeRequest(): NextRequest {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // Default GW2 API mocks for character/discipline/item fetches
+  // Default GW2 API mocks
   mockGw2Get.mockImplementation((endpoint: string) => {
+    if (endpoint === '/account/recipes') return Promise.resolve([]);
     if (endpoint === '/characters') return Promise.resolve(['TestChar']);
     if (endpoint.includes('/crafting')) {
       return Promise.resolve([
@@ -72,7 +73,11 @@ beforeEach(() => {
     }
     return Promise.resolve([]);
   });
-  mockGw2GetBulk.mockResolvedValue([]);
+  mockGw2GetBulk.mockImplementation((endpoint: string) => {
+    if (endpoint === '/recipes') return Promise.resolve([]);
+    if (endpoint === '/items') return Promise.resolve([]);
+    return Promise.resolve([]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -111,9 +116,12 @@ describe('GET /api/v1/crafting/profit', () => {
     expect(json.items).toBeDefined();
     expect(json.inventorySize).toBe(0);
     expect(json.goalsCount).toBe(0);
+    expect(json.knownRecipes).toBe(0);
+    expect(json.craftableWithDiscipline).toBe(0);
+    expect(json.craftableWithMaterials).toBe(0);
   });
 
-  it('evaluates candidates against available inventory', async () => {
+  it('evaluates known recipes against available inventory', async () => {
     const apiKey = JSON.stringify({
       key: 'test-key',
       permissions: [],
@@ -125,25 +133,57 @@ describe('GET /api/v1/crafting/profit', () => {
     });
     mockGetGoals.mockResolvedValue([]);
 
-    // Provide materials that match ascended material recipes
-    // Deldrimor Steel Ingot (46735) needs: 46742×1, 19684×3, 19685×18, 46741×10
+    // GW2 API: user knows recipe 12345 which outputs item 46735 (Deldrimor Steel Ingot)
+    mockGw2Get.mockImplementation((endpoint: string) => {
+      if (endpoint === '/account/recipes') return Promise.resolve([12345]);
+      if (endpoint === '/characters') return Promise.resolve(['TestChar']);
+      if (endpoint.includes('/crafting')) {
+        return Promise.resolve([{ discipline: 'Weaponsmith', rating: 500, active: true }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    mockGw2GetBulk.mockImplementation((endpoint: string) => {
+      if (endpoint === '/recipes') {
+        return Promise.resolve([
+          {
+            id: 12345,
+            type: 'Refinement',
+            output_item_id: 46735,
+            output_item_count: 1,
+            min_rating: 450,
+            disciplines: ['Weaponsmith'],
+            ingredients: [
+              { item_id: 46742, count: 1 },
+              { item_id: 19684, count: 3 },
+            ],
+          },
+        ]);
+      }
+      if (endpoint === '/items') {
+        return Promise.resolve([
+          { id: 46735, name: 'Deldrimor Steel Ingot', flags: [] },
+          { id: 46742, name: 'Lump of Mithrillium', flags: [] },
+          { id: 19684, name: 'Mithril Ingot', flags: [] },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
+    // Provide materials
     mockFetchInventory.mockResolvedValue(
       new Map<number, number>([
-        [46742, 5], // Lump of Mithrillium
-        [19684, 15], // Mithril Ingot
-        [19685, 90], // Darksteel Ingot
-        [46741, 50], // Thermocatalytic Reagent
+        [46742, 5],
+        [19684, 15],
       ])
     );
 
-    // Provide sell prices for the outputs and buy prices for inputs
+    // Provide sell prices
     mockGetCachedPrices.mockResolvedValue(
       new Map([
         ['46735', { buyPrice: 0, sellPrice: 50000, cachedAt: '2026-01-01T00:00:00.000Z' }],
         ['46742', { buyPrice: 30000, sellPrice: 35000, cachedAt: '2026-01-01T00:00:00.000Z' }],
         ['19684', { buyPrice: 100, sellPrice: 120, cachedAt: '2026-01-01T00:00:00.000Z' }],
-        ['19685', { buyPrice: 50, sellPrice: 70, cachedAt: '2026-01-01T00:00:00.000Z' }],
-        ['46741', { buyPrice: 1496, sellPrice: 0, cachedAt: '2026-01-01T00:00:00.000Z' }],
       ])
     );
 
@@ -151,13 +191,13 @@ describe('GET /api/v1/crafting/profit', () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    // Should find at least Deldrimor Steel Ingot as craftable
+    expect(json.knownRecipes).toBe(1);
+    expect(json.craftableWithDiscipline).toBe(1);
+    expect(json.craftableWithMaterials).toBe(1);
     const deldrimor = json.items.find((i: Record<string, unknown>) => i.itemId === 46735);
-    if (deldrimor) {
-      expect(deldrimor.quantity).toBeGreaterThan(0);
-      expect(deldrimor.sellPrice).toBe(50000);
-      expect(deldrimor.totalProfit).toBeDefined();
-    }
+    expect(deldrimor).toBeDefined();
+    expect(deldrimor.quantity).toBeGreaterThan(0);
+    expect(deldrimor.sellPrice).toBe(50000);
   });
 
   it('reserves materials for goals before evaluating profit', async () => {
@@ -179,13 +219,48 @@ describe('GET /api/v1/crafting/profit', () => {
       },
     ]);
 
+    // User knows recipe for Deldrimor
+    mockGw2Get.mockImplementation((endpoint: string) => {
+      if (endpoint === '/account/recipes') return Promise.resolve([12345]);
+      if (endpoint === '/characters') return Promise.resolve(['TestChar']);
+      if (endpoint.includes('/crafting')) {
+        return Promise.resolve([{ discipline: 'Weaponsmith', rating: 500, active: true }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    mockGw2GetBulk.mockImplementation((endpoint: string) => {
+      if (endpoint === '/recipes') {
+        return Promise.resolve([
+          {
+            id: 12345,
+            type: 'Refinement',
+            output_item_id: 46735,
+            output_item_count: 1,
+            min_rating: 450,
+            disciplines: ['Weaponsmith'],
+            ingredients: [
+              { item_id: 46742, count: 1 },
+              { item_id: 19684, count: 3 },
+            ],
+          },
+        ]);
+      }
+      if (endpoint === '/items') {
+        return Promise.resolve([
+          { id: 46735, name: 'Deldrimor Steel Ingot', flags: [] },
+          { id: 46742, name: 'Lump of Mithrillium', flags: [] },
+          { id: 19684, name: 'Mithril Ingot', flags: [] },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
     // Only 1 Lump of Mithrillium — the goal needs 1, leaving 0 for profit crafting
     mockFetchInventory.mockResolvedValue(
       new Map<number, number>([
-        [46742, 1], // Lump of Mithrillium — all reserved for goal
+        [46742, 1],
         [19684, 15],
-        [19685, 90],
-        [46741, 50],
       ])
     );
 
@@ -194,8 +269,6 @@ describe('GET /api/v1/crafting/profit', () => {
         ['46735', { buyPrice: 0, sellPrice: 50000, cachedAt: '2026-01-01T00:00:00.000Z' }],
         ['46742', { buyPrice: 30000, sellPrice: 35000, cachedAt: '2026-01-01T00:00:00.000Z' }],
         ['19684', { buyPrice: 100, sellPrice: 120, cachedAt: '2026-01-01T00:00:00.000Z' }],
-        ['19685', { buyPrice: 50, sellPrice: 70, cachedAt: '2026-01-01T00:00:00.000Z' }],
-        ['46741', { buyPrice: 1496, sellPrice: 0, cachedAt: '2026-01-01T00:00:00.000Z' }],
       ])
     );
 
@@ -204,9 +277,8 @@ describe('GET /api/v1/crafting/profit', () => {
 
     expect(res.status).toBe(200);
     expect(json.goalsCount).toBe(1);
-    // Deldrimor should NOT appear (or have qty 0) because the Mithrillium is reserved for the goal
+    // Deldrimor should NOT appear because the Mithrillium is reserved for the goal
     const deldrimor = json.items.find((i: Record<string, unknown>) => i.itemId === 46735);
-    // With 1 Mithrillium reserved for goal, 0 left → can't craft for profit
     expect(deldrimor).toBeUndefined();
   });
 

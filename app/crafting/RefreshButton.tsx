@@ -4,7 +4,11 @@ import { useState } from 'react';
 
 export default function RefreshButton() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ refreshed: number; cachedAt: string } | null>(null);
+  const [result, setResult] = useState<{
+    refreshed: number;
+    knownRecipes: number;
+    cachedAt: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleRefresh = async () => {
@@ -36,7 +40,8 @@ export default function RefreshButton() {
         {loading && <p>Refreshing prices from Trading Post…</p>}
         {result && (
           <p>
-            Refreshed {result.refreshed} prices at {new Date(result.cachedAt).toLocaleTimeString()}
+            Refreshed {result.refreshed} prices across {result.knownRecipes} recipes at{' '}
+            {new Date(result.cachedAt).toLocaleTimeString()}
           </p>
         )}
         {error && <p role="alert">{error}</p>}

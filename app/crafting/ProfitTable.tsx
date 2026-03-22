@@ -24,6 +24,9 @@ interface ProfitResponse {
   items: ProfitItem[];
   inventorySize: number;
   goalsCount: number;
+  knownRecipes: number;
+  craftableWithDiscipline: number;
+  craftableWithMaterials: number;
   lastUpdated: string;
   priceWarning?: string;
   error?: string;
@@ -175,7 +178,8 @@ export default function ProfitTable() {
   return (
     <div>
       <p className="profit-meta">
-        Inventory: {data.inventorySize} item types
+        Known recipes: {data.knownRecipes} · With discipline: {data.craftableWithDiscipline} ·
+        Craftable now: {data.craftableWithMaterials} · Inventory: {data.inventorySize} item types
         {data.goalsCount > 0 && (
           <>
             {' '}

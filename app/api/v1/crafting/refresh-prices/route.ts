@@ -7,8 +7,16 @@ import { GoalProgressSchema } from '@/lib/schemas';
 import { buildRecipeTree } from '@/lib/recipeTree';
 import type { Recipe, Item, RecipeNode } from '@/lib/recipeTree';
 import { Gw2Client } from '@/lib/gw2Client';
-import candidatesData from '@/data/profitable-candidates.json';
 import { logger } from '@/lib/logger';
+
+interface GW2Recipe {
+  id: number;
+  output_item_id: number;
+  output_item_count: number;
+  min_rating: number;
+  disciplines: string[];
+  ingredients: Array<{ item_id: number; count: number }>;
+}
 
 function collectAllItemIds(node: RecipeNode, ids: Set<number>): void {
   ids.add(node.itemId);
@@ -20,14 +28,12 @@ function collectAllItemIds(node: RecipeNode, ids: Set<number>): void {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = getRequestUser(req);
   try {
-    // Get API key for authenticated endpoints
     const apiKeyRaw = await getSetting(user.id, 'apiKey');
     const client = apiKeyRaw
       ? new Gw2Client({ apiKey: (JSON.parse(apiKeyRaw) as { key: string }).key })
       : new Gw2Client();
 
     const records = await getGoals(user.id);
-
     const goals = records
       .map((r) => {
         const parsed = GoalProgressSchema.safeParse(JSON.parse(r.value));
@@ -35,24 +41,42 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
       .filter((g): g is NonNullable<typeof g> => g !== null);
 
-    // Standard crafting recipes map (empty — buildRecipeTree uses mystic forge JSON)
+    // Fetch known recipes from GW2 API
+    let knownRecipeIds: number[] = [];
+    try {
+      knownRecipeIds = await client.get<number[]>('/account/recipes');
+    } catch {
+      logger.warn('Could not fetch /account/recipes, using goals only', {
+        userId: user.id,
+      });
+    }
+
+    // Batch fetch recipe details
+    const gw2Recipes =
+      knownRecipeIds.length > 0 ? await client.getBulk<GW2Recipe>('/recipes', knownRecipeIds) : [];
+
+    // Build recipes map
     const recipes = new Map<number, Recipe>();
     const items = new Map<number, Item>();
+    for (const r of gw2Recipes) {
+      recipes.set(r.output_item_id, {
+        outputItemId: r.output_item_id,
+        outputItemCount: r.output_item_count,
+        disciplines: r.disciplines,
+        minRating: r.min_rating,
+        ingredients: r.ingredients.map((ing) => ({
+          itemId: ing.item_id,
+          count: ing.count,
+        })),
+      });
+    }
 
     // Register goal items
     for (const goal of goals) {
       items.set(goal.itemId, { id: goal.itemId, name: goal.itemName, flags: [] });
     }
 
-    // Register candidate items
-    const candidates = (
-      candidatesData as { candidates: Array<{ itemId: number; itemName: string }> }
-    ).candidates;
-    for (const c of candidates) {
-      items.set(c.itemId, { id: c.itemId, name: c.itemName, flags: [] });
-    }
-
-    // Build recipe trees for goals + candidates to discover all item IDs needing prices
+    // Collect all item IDs needing prices
     const allItemIds = new Set<number>();
 
     for (const goal of goals) {
@@ -60,14 +84,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       collectAllItemIds(tree, allItemIds);
     }
 
-    for (const c of candidates) {
-      const tree = buildRecipeTree(c.itemId, recipes, items);
-      collectAllItemIds(tree, allItemIds);
+    for (const r of gw2Recipes) {
+      allItemIds.add(r.output_item_id);
+      for (const ing of r.ingredients) {
+        allItemIds.add(ing.item_id);
+      }
     }
 
     const itemIds = [...allItemIds];
 
-    // Fetch TP prices for all discovered items
+    logger.info('Refreshing prices', {
+      userId: user.id,
+      knownRecipes: knownRecipeIds.length,
+      itemsToPrice: itemIds.length,
+    });
+
+    // Fetch TP prices
     interface GW2Price {
       id: number;
       buys?: { unit_price: number };
@@ -106,7 +138,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       await putCachedPrices(priceEntries);
     }
 
-    return NextResponse.json({ refreshed: priceEntries.length, cachedAt });
+    return NextResponse.json({
+      refreshed: priceEntries.length,
+      knownRecipes: knownRecipeIds.length,
+      cachedAt,
+    });
   } catch (err) {
     logger.error('Refresh prices POST failed', {
       userId: user.id,

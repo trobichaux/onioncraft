@@ -84,8 +84,26 @@ See [README.md](../README.md) for local development instructions.
 
 With MSDN $150/month credit:
 - **Static Web Apps Free tier**: $0 (includes 100GB bandwidth, 2 custom domains)
-- **Table Storage**: ~$0.01/month for small data volumes
+- **Table Storage**: ~$0.05–0.15/month (see breakdown below)
 - **Total estimated**: < $1/month
+
+### Table Storage Cost Breakdown
+
+Pricing (LRS, East US 2): $0.045/GB storage, $0.00036/10K transactions.
+
+| Operation | Estimated Volume/Month | Cost |
+|-----------|----------------------|------|
+| **Storage** (Settings, PriceCache, SkinCache, GoalProgress, ShoppingList) | < 100 MB | ~$0.005 |
+| **Skin collection refresh** (read SkinCache + write owned IDs + meta) | ~500–1,000 transactions per refresh × ~4 refreshes/month | ~$0.002 |
+| **Skin change check** (read Settings, 1 GW2 API call) | ~3 transactions × ~30 page loads/month | negligible |
+| **Collection GET** (read Settings metadata) | ~2 transactions × ~30 page loads/month | negligible |
+| **SkinCache writes** (batch upsert during refresh) | ~900 batch transactions per full catalog refresh × ~1/month | ~$0.003 |
+| **PriceCache reads/writes** (crafting profit + skin refresh) | ~500 transactions/month | ~$0.002 |
+| **Settings CRUD** (API key, rules, filters, owned IDs) | ~50 transactions/month | negligible |
+| **GoalProgress + ShoppingList** | ~100 transactions/month | negligible |
+| **Total transactions** | ~5,000–10,000/month | **~$0.004–0.04** |
+
+**Key change from previous estimate**: Persisting owned skin IDs and collection metadata adds ~6 extra Settings transactions per page load (read collectionMeta, read ownedSkinIds) plus ~4 writes per refresh. This has negligible cost impact — the per-transaction price at this volume rounds to effectively $0.
 
 ---
 
@@ -174,7 +192,7 @@ az consumption budget create \
   }'
 ```
 
-> **Budget is set to $5/month** — generous for expected <$1 usage. Alerts fire at $2.50 actual, $4 actual, and when forecast exceeds $5.
+> **Budget is set to $5/month** — generous headroom above the revised ~$0.05–0.15/month estimate. The addition of persisted skin collection data (owned IDs, metadata) increases Table Storage transactions by ~200/month — well within the existing budget and alert thresholds. No changes needed to alert configuration.
 
 ### 3. MSDN Spending Cap
 

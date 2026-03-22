@@ -42,9 +42,10 @@ Navigate to the **[Settings](https://onioncraft.geekyonion.com/settings)** page,
 ### 5. Use the Skin Collection Tracker
 
 1. Go to **[Skins](https://onioncraft.geekyonion.com/skins)**
-2. Click **Refresh Skin Catalog** to load the full GW2 skin database (~10,000 skins)
-3. Your **Collection Progress** shows total/owned/unowned counts with a progress bar
+2. Click **Refresh Collection** to fetch your owned skins, compute unowned skins, and load acquisition methods + TP prices
+3. Your **Collection Progress** shows total/owned/unowned counts with a progress bar and last-refreshed timestamp
 4. The **Unowned Skins** table shows what you're missing, with TP prices in gold/silver/copper, acquisition method, and a price range slider to filter by budget
+5. On subsequent visits, your collection data loads **instantly from cache** — a background check detects newly unlocked skins and prompts you to refresh
 
 ---
 
@@ -66,11 +67,13 @@ Identifies the most profitable items to craft from your inventory, after reservi
 
 Shows unowned weapon/armor skins ranked by acquisition method:
 
+- **Cross-session persistence** — owned skin IDs and collection metadata stored in Azure Table Storage; full collection result cached in localStorage for instant page loads
+- **Lightweight change detection** — on page load, background check compares owned skin count with GW2 API; prompts for refresh only when changes are detected
 - **Acquisition categorization** — Trading Post, achievement reward, vendor, Gem Store, content drop, or unknown (with wiki link)
 - **Price range slider** — filter skins by TP price budget (min/max in gold/silver/copper)
 - **Priority rules engine** — weighted scoring by type, rarity, or acquisition method
 - **Catalog caching** — ~10k skins cached in Azure Table Storage
-- **Collection stats** — total/owned/unowned counts with progress bar
+- **Collection stats** — total/owned/unowned counts with progress bar and last-refreshed timestamp
 
 ## Architecture
 
@@ -121,7 +124,9 @@ The GW2 API client includes production-grade resilience:
 | DELETE | `/api/v1/crafting/goals` | Remove a crafting goal |
 | GET | `/api/v1/crafting/profit` | Ranked profit table |
 | POST | `/api/v1/crafting/refresh-prices` | Fetch and cache TP prices |
-| GET | `/api/v1/skins/collection` | Unowned skins with acquisition methods |
+| GET | `/api/v1/skins/collection` | Persisted collection metadata (stats) |
+| POST | `/api/v1/skins/collection/check` | Lightweight change detection (owned count diff) |
+| POST | `/api/v1/skins/collection/refresh` | Full refresh: fetch owned, compute unowned, persist |
 | POST | `/api/v1/skins/catalog/refresh` | Refresh ~90k skin cache |
 | POST/GET/DELETE | `/api/v1/settings/api-key` | API key lifecycle |
 | GET/PUT | `/api/v1/settings/exclusion-list` | Item exclusion management |
@@ -165,7 +170,7 @@ npm run dev:swa      # Full SWA local dev (recommended)
 npm run build        # Production build
 npm run lint         # ESLint + Prettier check
 npm run lint:fix     # Auto-fix lint issues
-npm test             # Jest unit tests (230 tests)
+npm test             # Jest unit tests (241 tests)
 npm run test:watch   # Jest in watch mode
 npm run test:e2e     # Playwright e2e tests
 npm run type-check   # TypeScript type checking
@@ -178,11 +183,12 @@ app/
   crafting/           Crafting profit calculator pages
   skins/              Skin collection tracker pages
   settings/           Settings management pages
-  api/v1/             API routes (10 route handlers)
+  api/v1/             API routes (13 route handlers)
 lib/
   auth.ts             getRequestUser() — single auth seam
   gw2Client.ts        GW2 API client with resilience pipeline
-  tableStorage.ts     Azure Table Storage CRUD (4 tables)
+  tableStorage.ts     Azure Table Storage CRUD (5 tables)
+  logger.ts           Structured JSON logger (captured by Azure SWA)
   inventory.ts        Fetch player bank + material storage
   recipeTree.ts       Recipe tree DAG + overage calc + craftable quantity
   profitCalc.ts       TP fee math + crafting cost computation

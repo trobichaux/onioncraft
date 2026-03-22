@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { formatCoins, formatCoinsText } from '@/lib/formatCurrency';
 
 interface SkinEntry {
@@ -15,12 +15,8 @@ interface SkinEntry {
   notes?: string;
 }
 
-interface CollectionResponse {
-  total: number;
-  owned: number;
+interface SkinTableProps {
   unowned: SkinEntry[];
-  lastUpdated: string;
-  error?: string;
 }
 
 type SortField = 'name' | 'type' | 'rarity' | 'method' | 'tpPrice';
@@ -35,11 +31,7 @@ const METHOD_COLORS: Record<string, string> = {
   unknown: '#9e9e9e',
 };
 
-export default function SkinTable() {
-  const [data, setData] = useState<CollectionResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [needsKey, setNeedsKey] = useState(false);
+export default function SkinTable({ unowned }: SkinTableProps) {
   const [typeFilter, setTypeFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
   const [priceMin, setPriceMin] = useState(0);
@@ -47,33 +39,6 @@ export default function SkinTable() {
   const [priceRangeInit, setPriceRangeInit] = useState(false);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDirection>('ascending');
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setNeedsKey(false);
-    try {
-      const res = await fetch('/api/v1/skins/collection');
-      const json: CollectionResponse = await res.json();
-      if (!res.ok) {
-        if (json.error === 'API key required') {
-          setNeedsKey(true);
-        } else {
-          setError(json.error ?? 'Failed to load collection');
-        }
-      } else {
-        setData(json);
-      }
-    } catch {
-      setError('Failed to load collection');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -84,29 +49,7 @@ export default function SkinTable() {
     }
   }
 
-  if (loading) {
-    return <p role="status">Loading skin collection…</p>;
-  }
-
-  if (needsKey) {
-    return (
-      <div className="info-box">
-        <p>Add your GW2 API key on the <a href="/settings">Settings page</a> to see your unowned skins.</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div role="alert">
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  const tpSkins = data.unowned.filter((s) => s.tpPrice != null && s.tpPrice > 0);
+  const tpSkins = unowned.filter((s) => s.tpPrice != null && s.tpPrice > 0);
   const maxTpPrice = tpSkins.length > 0
     ? Math.max(...tpSkins.map((s) => s.tpPrice!))
     : 0;
@@ -118,7 +61,7 @@ export default function SkinTable() {
     setPriceRangeInit(true);
   }
 
-  let filtered = data.unowned;
+  let filtered = unowned;
 
   if (typeFilter) {
     filtered = filtered.filter((s) => s.type === typeFilter);
@@ -143,8 +86,8 @@ export default function SkinTable() {
     return String(aVal).localeCompare(String(bVal)) * dir;
   });
 
-  const types = Array.from(new Set(data.unowned.map((s) => s.type))).sort();
-  const methods = Array.from(new Set(data.unowned.map((s) => s.method))).sort();
+  const types = Array.from(new Set(unowned.map((s) => s.type))).sort();
+  const methods = Array.from(new Set(unowned.map((s) => s.method))).sort();
 
   function ariaSort(field: SortField): 'ascending' | 'descending' | 'none' {
     return sortField === field ? sortDir : 'none';

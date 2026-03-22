@@ -59,3 +59,13 @@ export const GoalProgressSchema = z.object({
   resolvedAt: z.string().datetime().optional(),
 });
 export type GoalProgress = z.infer<typeof GoalProgressSchema>;
+
+// ---------------------------------------------------------------------------
+// Skin collection metadata (persisted server-side for cross-session state)
+// ---------------------------------------------------------------------------
+
+export const CollectionMetaSchema = z.object({
+  total: z.number().int().nonnegative(),
+  ownedCount: z.number().int().nonnegative(),
+  lastRefreshed: z.string().datetime(),
+});

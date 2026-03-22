@@ -47,10 +47,12 @@ _Generated: 2026-03-22_
 - npm ci with lockfile verification
 - No unsafe deserialization
 
-### A09: Logging/Monitoring — ⚠️ TODO
-- No structured logging yet
+### A09: Logging/Monitoring — ✅ Implemented
+- Structured JSON logger (`lib/logger.ts`) outputs to stdout/stderr (captured by Azure SWA)
+- All API route handlers wrapped in try/catch with `logger.error()` on failures
+- Log entries include: timestamp, level, message, userId, error context
 - API keys never logged (enforced by code convention)
-- Recommendation: add Application Insights in production
+- Recommendation: add Application Insights in production for aggregation and alerting
 
 ### A10: SSRF — ✅ Mitigated
 - GW2 API proxy validates endpoint paths

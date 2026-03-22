@@ -62,7 +62,13 @@ export function _resetClients(): void {
 // Settings
 // ---------------------------------------------------------------------------
 
-export type SettingKey = 'exclusionList' | 'priorityRules' | 'apiKey' | 'characterFilter';
+export type SettingKey =
+  | 'exclusionList'
+  | 'priorityRules'
+  | 'apiKey'
+  | 'characterFilter'
+  | 'ownedSkinIds'
+  | 'collectionMeta';
 
 const MAX_VALUE_BYTES = 64 * 1024; // 64 KB
 

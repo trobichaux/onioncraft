@@ -84,7 +84,7 @@ The GW2 API (`/v2/recipes`) does not include Mystic Forge conversions, NPC vendo
 
 | Table | Partition Key | Row Key | Notes |
 |-------|--------------|---------|-------|
-| `Settings` | `userId` | `exclusionList` / `priorityRules` / `apiKey` / `characterFilter` | JSON string in `value` property. Max 64KB per entity. |
+| `Settings` | `userId` | `exclusionList` / `priorityRules` / `apiKey` / `characterFilter` / `ownedSkinIds` / `collectionMeta` | JSON string in `value` property. Max 64KB per entity. |
 | `PriceCache` | `"shared"` | `itemId` | Fields: `buyPrice: number`, `sellPrice: number`, `cachedAt: string (ISO 8601)`. Never user-partitioned. |
 | `GoalProgress` | `userId` | `goalId` (= GW2 item ID of the legendary item) | One row per active goal. JSON string in `value` property. Includes `resolvedAt: string (ISO 8601)`. Multiple rows per user are expected and supported. |
 | `SkinCache` | `"shared"` | `skinId` | Fields: `name`, `type`, `icon`, `cachedAt`. TTL: 24 hours. Never user-partitioned. |
@@ -249,13 +249,27 @@ Only recipes whose output is tradeable (has a `/v2/commerce/prices` entry) are i
 ### Skin Catalog Caching Strategy
 `/v2/skins` returns ~90,000+ skin IDs. The full catalog is cached in the `SkinCache` Table Storage table with a 24-hour TTL. On cache miss: fetch all IDs, then fetch metadata in batches of 200 (max 5 concurrent). Manual "Refresh Skin Catalog" button available. Progress indicator shown during initial fetch (can take several minutes).
 
+### Persistence & Lightweight Change Detection
+
+Owned skin IDs and collection metadata are persisted server-side in the `Settings` table:
+- **`ownedSkinIds`** — JSON array of owned skin IDs (typically 5–8K entries, ~50KB). Updated on each full refresh.
+- **`collectionMeta`** — `{ total, ownedCount, lastRefreshed }`. Used by the GET endpoint to return stats instantly without GW2 API calls.
+
+The full collection response (unowned skins list with metadata) is cached **client-side in localStorage** for instant page loads.
+
+**API Endpoint Design:**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/skins/collection` | Returns persisted stats (`{ total, owned, lastRefreshed, needsRefresh }`). No GW2 API calls. |
+| POST | `/api/v1/skins/collection/check` | Lightweight change detection — fetches `/account/skins` count from GW2, compares with persisted `ownedCount`. Returns `{ changed, currentCount, previousCount }`. |
+| POST | `/api/v1/skins/collection/refresh` | Full refresh — fetches owned IDs + catalog from GW2, computes unowned list with acquisition methods and TP prices, persists owned IDs + metadata, returns complete response. |
+| POST | `/api/v1/skins/catalog/refresh` | Refreshes shared SkinCache with all ~90K skin details (admin/pre-warm). |
+
 ### User Flow
-1. Load skin catalog from SkinCache (or fetch if stale)
-2. Fetch account's unlocked skin IDs
-3. Diff: unowned = catalog minus account skins
-4. Categorize each unowned skin by acquisition method
-5. Apply user priority rules
-6. Display as filterable, sortable table
+1. **First visit:** User clicks "Refresh Collection" → full computation → result displayed and cached in localStorage + persisted metadata/owned IDs in Table Storage
+2. **Subsequent visits:** Page loads instantly from localStorage cache → background POST to `/collection/check` compares owned count → if changed, notification banner prompts user to refresh
+3. **Refresh button:** Full re-fetch from GW2 API, recompute unowned list, update all caches
 
 ### Acquisition Method Categories
 

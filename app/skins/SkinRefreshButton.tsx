@@ -1,54 +1,28 @@
 'use client';
 
-import { useState } from 'react';
-
-interface RefreshResult {
-  refreshed: number;
-  cachedAt: string;
+interface SkinRefreshButtonProps {
+  onRefresh: () => Promise<void>;
+  refreshing: boolean;
+  lastRefreshed?: string;
 }
 
-export default function SkinRefreshButton() {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<RefreshResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleRefresh() {
-    setLoading(true);
-    setResult(null);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/v1/skins/catalog/refresh', {
-        method: 'POST',
-      });
-      const data = await res.json() as RefreshResult & { error?: string };
-
-      if (!res.ok) {
-        setError(data.error ?? 'Refresh failed');
-      } else {
-        setResult(data);
-      }
-    } catch {
-      setError('Failed to refresh catalog');
-    } finally {
-      setLoading(false);
-    }
-  }
-
+export default function SkinRefreshButton({
+  onRefresh,
+  refreshing,
+  lastRefreshed,
+}: SkinRefreshButtonProps) {
   return (
     <div>
-      <button type="button" onClick={handleRefresh} disabled={loading}>
-        {loading ? 'Refreshing... this may take a while' : 'Refresh Skin Catalog'}
+      <button type="button" onClick={onRefresh} disabled={refreshing}>
+        {refreshing ? 'Refreshing… this may take a while' : 'Refresh Collection'}
       </button>
 
       <div aria-live="polite" role="status">
-        {result && (
+        {lastRefreshed && !refreshing && (
           <p>
-            Refreshed {result.refreshed} skins at{' '}
-            {new Date(result.cachedAt).toLocaleString()}.
+            Last refreshed: {new Date(lastRefreshed).toLocaleString()}
           </p>
         )}
-        {error && <p role="alert">{error}</p>}
       </div>
     </div>
   );

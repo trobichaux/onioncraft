@@ -255,13 +255,14 @@ Power, Precision, Toughness, Vitality, Concentration, Condition Damage, Expertis
 /app                    # Next.js App Router pages and API routes
   /api
     /crafting           # Profit calc, goal resolution, price refresh
-    /skins              # Collection diff, unlock ranking
+    /skins              # Collection diff, unlock ranking, change detection
     /settings           # Exclusion list, priority rules, API key CRUD
     /gw2                # GW2 API proxy (avoids CORS, handles rate limits)
 /lib
   auth.ts               # getRequestUser() stub — single auth seam
   tableStorage.ts       # Azure Table Storage client wrapper
   gw2Client.ts          # GW2 API client with retry/batching
+  logger.ts             # Structured JSON logger (stdout/stderr → Azure SWA)
 /data                   # Static JSON data files (versioned, manually maintained)
   mystic-forge-recipes.json
   currency-conversions.json

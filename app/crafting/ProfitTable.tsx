@@ -28,8 +28,10 @@ interface ProfitResponse {
   craftableWithDiscipline: number;
   craftableWithMaterials: number;
   lastUpdated: string;
+  cacheAge?: string;
   priceWarning?: string;
   error?: string;
+  needsInit?: boolean;
 }
 
 type SortKey = keyof Pick<
@@ -42,6 +44,9 @@ export default function ProfitTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsKey, setNeedsKey] = useState(false);
+  const [needsInit, setNeedsInit] = useState(false);
+  const [initializing, setInitializing] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('totalProfit');
   const [sortAsc, setSortAsc] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -51,12 +56,15 @@ export default function ProfitTable() {
     setLoading(true);
     setError(null);
     setNeedsKey(false);
+    setNeedsInit(false);
     try {
       const res = await fetch('/api/v1/crafting/profit');
       const json: ProfitResponse = await res.json();
       if (!res.ok) {
         if (json.error?.includes('API key')) {
           setNeedsKey(true);
+        } else if (json.needsInit) {
+          setNeedsInit(true);
         } else {
           setError(json.error ?? 'Failed to load profit data');
         }
@@ -120,6 +128,25 @@ export default function ProfitTable() {
     }
   };
 
+  const handleInitialize = async () => {
+    setInitializing(true);
+    setInitError(null);
+    try {
+      const res = await fetch('/api/v1/account/initialize', { method: 'POST' });
+      if (res.ok) {
+        setNeedsInit(false);
+        await fetchProfitData();
+      } else {
+        const json = await res.json();
+        setInitError(json.error ?? 'Initialization failed');
+      }
+    } catch {
+      setInitError('Failed to initialize account data');
+    } finally {
+      setInitializing(false);
+    }
+  };
+
   if (loading) return <p>Loading profit data…</p>;
 
   if (needsKey) {
@@ -129,6 +156,30 @@ export default function ProfitTable() {
           Add your GW2 API key on the <a href="/settings">Settings page</a> to see crafting profits.
           The API key is needed to read your inventory.
         </p>
+      </div>
+    );
+  }
+
+  if (needsInit) {
+    return (
+      <div className="info-box">
+        <p>
+          Your crafting data needs to be initialized. This fetches your recipes, items, and
+          character data from the GW2 API and caches it locally for fast loading.
+        </p>
+        <button
+          type="button"
+          onClick={handleInitialize}
+          disabled={initializing}
+          className="btn-primary"
+        >
+          {initializing ? '⏳ Initializing…' : '🔄 Initialize Account Data'}
+        </button>
+        {initError && (
+          <p role="alert" className="error">
+            {initError}
+          </p>
+        )}
       </div>
     );
   }
@@ -184,6 +235,12 @@ export default function ProfitTable() {
           <>
             {' '}
             · {data.goalsCount} goal{data.goalsCount > 1 ? 's' : ''} reserving materials
+          </>
+        )}
+        {data.cacheAge && (
+          <>
+            {' '}
+            · Cache: {data.cacheAge}
           </>
         )}
       </p>

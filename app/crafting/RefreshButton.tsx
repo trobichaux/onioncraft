@@ -7,6 +7,8 @@ export default function RefreshButton() {
   const [result, setResult] = useState<{
     refreshed: number;
     knownRecipes: number;
+    newRecipesCached: number;
+    newItemsCached: number;
     cachedAt: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +42,11 @@ export default function RefreshButton() {
         {loading && <p>Refreshing prices from Trading Post…</p>}
         {result && (
           <p>
-            Refreshed {result.refreshed} prices across {result.knownRecipes} recipes at{' '}
-            {new Date(result.cachedAt).toLocaleTimeString()}
+            Refreshed {result.refreshed} prices across {result.knownRecipes} recipes
+            {(result.newRecipesCached > 0 || result.newItemsCached > 0) && (
+              <> (cached {result.newRecipesCached} new recipes, {result.newItemsCached} new items)</>
+            )}
+            {' '}at {new Date(result.cachedAt).toLocaleTimeString()}
           </p>
         )}
         {error && <p role="alert">{error}</p>}

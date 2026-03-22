@@ -32,6 +32,13 @@ export default function ApiKeyForm() {
   const [missingPermissions, setMissingPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [successPermissions, setSuccessPermissions] = useState<string[] | null>(null);
+  const [initStatus, setInitStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [initResult, setInitResult] = useState<{
+    knownRecipes: number;
+    characters: number;
+    newRecipesCached: number;
+    newItemsCached: number;
+  } | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -71,6 +78,21 @@ export default function ApiKeyForm() {
         setSuccessPermissions(data.permissions ?? []);
         setKeyInput('');
         await fetchStatus();
+
+        // Trigger account initialization in the background
+        setInitStatus('loading');
+        try {
+          const initRes = await fetch('/api/v1/account/initialize', { method: 'POST' });
+          if (initRes.ok) {
+            const initData = await initRes.json();
+            setInitStatus('done');
+            setInitResult(initData);
+          } else {
+            setInitStatus('error');
+          }
+        } catch {
+          setInitStatus('error');
+        }
       }
     } catch {
       setError('Failed to save API key');
@@ -175,6 +197,21 @@ export default function ApiKeyForm() {
       {successPermissions && (
         <div className="success" role="status" aria-live="polite">
           <p>✓ API key saved and validated successfully!</p>
+          {initStatus === 'loading' && (
+            <p>⏳ Initializing account data (recipes, items, characters)…</p>
+          )}
+          {initStatus === 'done' && initResult && (
+            <p>
+              ✓ Cached {initResult.knownRecipes} recipes, {initResult.newItemsCached} items,{' '}
+              {initResult.characters} characters. Ready for crafting!
+            </p>
+          )}
+          {initStatus === 'error' && (
+            <p>
+              ⚠️ Account initialization failed. Visit the{' '}
+              <a href="/crafting">Crafting page</a> to retry.
+            </p>
+          )}
         </div>
       )}
     </div>

@@ -1,0 +1,12 @@
+.next/
+out/
+node_modules/
+coverage/
+.env
+.env.local
+docs/
+CLAUDE.md
+README.md
+DISCLAIMER.md
+*.md
+!copilot-instructions.md

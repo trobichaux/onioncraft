@@ -44,9 +44,12 @@ export default function RefreshButton() {
           <p>
             Refreshed {result.refreshed} prices across {result.knownRecipes} recipes
             {(result.newRecipesCached > 0 || result.newItemsCached > 0) && (
-              <> (cached {result.newRecipesCached} new recipes, {result.newItemsCached} new items)</>
-            )}
-            {' '}at {new Date(result.cachedAt).toLocaleTimeString()}
+              <>
+                {' '}
+                (cached {result.newRecipesCached} new recipes, {result.newItemsCached} new items)
+              </>
+            )}{' '}
+            at {new Date(result.cachedAt).toLocaleTimeString()}
           </p>
         )}
         {error && <p role="alert">{error}</p>}

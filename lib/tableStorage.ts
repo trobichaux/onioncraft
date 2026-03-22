@@ -1,5 +1,10 @@
 import { TableClient, RestError, TransactionAction, odata } from '@azure/data-tables';
-import type { PriceCacheEntity, SkinCacheEntity, RecipeCacheEntity, ItemCacheEntity } from './schemas';
+import type {
+  PriceCacheEntity,
+  SkinCacheEntity,
+  RecipeCacheEntity,
+  ItemCacheEntity,
+} from './schemas';
 
 // ---------------------------------------------------------------------------
 // Connection & client helpers

@@ -208,8 +208,8 @@ export default function ApiKeyForm() {
           )}
           {initStatus === 'error' && (
             <p>
-              ⚠️ Account initialization failed. Visit the{' '}
-              <a href="/crafting">Crafting page</a> to retry.
+              ⚠️ Account initialization failed. Visit the <a href="/crafting">Crafting page</a> to
+              retry.
             </p>
           )}
         </div>

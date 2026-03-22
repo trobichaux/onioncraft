@@ -237,12 +237,7 @@ export default function ProfitTable() {
             · {data.goalsCount} goal{data.goalsCount > 1 ? 's' : ''} reserving materials
           </>
         )}
-        {data.cacheAge && (
-          <>
-            {' '}
-            · Cache: {data.cacheAge}
-          </>
-        )}
+        {data.cacheAge && <> · Cache: {data.cacheAge}</>}
       </p>
       {data.priceWarning && (
         <p className="price-warning" role="alert">

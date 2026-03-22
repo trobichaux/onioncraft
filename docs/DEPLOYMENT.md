@@ -86,3 +86,125 @@ With MSDN $150/month credit:
 - **Static Web Apps Free tier**: $0 (includes 100GB bandwidth, 2 custom domains)
 - **Table Storage**: ~$0.01/month for small data volumes
 - **Total estimated**: < $1/month
+
+---
+
+## Billing Controls & Cost Monitoring
+
+### 1. Weekly Cost Report Email (Actual + Forecast)
+
+Azure Cost Management Scheduled Actions send a weekly email showing actual spend to date and projected spend for the rest of the billing cycle.
+
+**Step 1: Create a Cost Management View (via Azure Portal)**
+
+1. Go to **Cost Management** → **Cost analysis**
+2. Set the view to **"AccumulatedCosts"** with timeframe **"BillingMonth"**
+3. Ensure both **Actual cost** and **Forecast** are shown
+4. Click **Save** → name it `onioncraft-weekly-view`
+5. Note the view's resource ID (visible in URL or via API)
+
+**Step 2: Create the Scheduled Action (via CLI)**
+
+```bash
+# Get your subscription ID
+SUB_ID=$(az account show --query id -o tsv)
+
+# Create the weekly email report
+az rest --method put \
+  --uri "https://management.azure.com/subscriptions/${SUB_ID}/providers/Microsoft.CostManagement/scheduledActions/onioncraft-weekly-report?api-version=2023-11-01" \
+  --body '{
+    "kind": "Email",
+    "properties": {
+      "displayName": "OnionCraft Weekly Cost Report",
+      "notification": {
+        "subject": "OnionCraft — Weekly Azure Spend Report",
+        "to": ["tim@robichaux.net"],
+        "message": "Weekly actual spend and forecast for the OnionCraft resource group."
+      },
+      "schedule": {
+        "frequency": "Weekly",
+        "daysOfWeek": ["Monday"],
+        "startDate": "2026-03-23T08:00:00Z",
+        "endDate": "2027-03-23T08:00:00Z"
+      },
+      "status": "Enabled",
+      "viewId": "/providers/Microsoft.CostManagement/views/onioncraft-weekly-view",
+      "scope": "/subscriptions/'"${SUB_ID}"'/resourceGroups/onioncraft-rg"
+    }
+  }'
+```
+
+> **What you receive:** An email every Monday with a chart showing actual cost to date and projected cost through the end of the billing cycle, scoped to the `onioncraft-rg` resource group.
+
+### 2. Budget with Threshold Alerts
+
+Set a monthly budget with alerts at 50%, 80%, and 100% (both actual and forecasted):
+
+```bash
+az consumption budget create \
+  --budget-name onioncraft-budget \
+  --amount 5 \
+  --time-grain Monthly \
+  --resource-group onioncraft-rg \
+  --category Cost \
+  --start-date 2026-04-01 \
+  --end-date 2027-04-01 \
+  --notifications '{
+    "actual50": {
+      "enabled": true,
+      "operator": "GreaterThan",
+      "threshold": 50,
+      "contactEmails": ["tim@robichaux.net"],
+      "thresholdType": "Actual"
+    },
+    "actual80": {
+      "enabled": true,
+      "operator": "GreaterThan",
+      "threshold": 80,
+      "contactEmails": ["tim@robichaux.net"],
+      "thresholdType": "Actual"
+    },
+    "forecast100": {
+      "enabled": true,
+      "operator": "GreaterThan",
+      "threshold": 100,
+      "contactEmails": ["tim@robichaux.net"],
+      "thresholdType": "Forecasted"
+    }
+  }'
+```
+
+> **Budget is set to $5/month** — generous for expected <$1 usage. Alerts fire at $2.50 actual, $4 actual, and when forecast exceeds $5.
+
+### 3. MSDN Spending Cap
+
+Your MSDN Visual Studio Ultimate subscription includes a **hard $150/month spending cap**. When credits are exhausted:
+- All pay-as-you-go services are **automatically disabled**
+- Static Web App (Free tier) continues working (it's always free)
+- Table Storage stops responding until the next billing cycle
+
+**Verify your cap is enabled:**
+```bash
+# Check in Azure Portal: Subscriptions → your sub → Overview
+# Look for "Spending limit: On" — this is the MSDN hard cap
+```
+
+> ⚠️ **Do not remove the spending cap.** It's the ultimate safety net.
+
+### 4. Resource Group Isolation
+
+All OnionCraft resources live in a single resource group (`onioncraft-rg`). This provides:
+- **Cost scoping**: Weekly reports and budgets are scoped to this RG only
+- **Kill switch**: `az group delete --name onioncraft-rg` stops all charges instantly
+- **Clear separation** from any other Azure resources on the subscription
+
+### Summary of Billing Controls
+
+| Control | Frequency | Action |
+|---------|-----------|--------|
+| **Weekly email report** | Every Monday | Actual spend + forecast for billing cycle |
+| **Budget alert (50%)** | When triggered | Email at $2.50 actual spend |
+| **Budget alert (80%)** | When triggered | Email at $4.00 actual spend |
+| **Budget alert (forecast)** | When triggered | Email when forecast exceeds $5 |
+| **MSDN spending cap** | Monthly | Hard stop at $150/month (subscription-wide) |
+| **Resource group kill switch** | On demand | `az group delete` to stop all charges |

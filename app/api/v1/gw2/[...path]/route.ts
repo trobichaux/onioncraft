@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth';
 import { Gw2Client, Gw2ApiError, CircuitOpenError } from '@/lib/gw2Client';

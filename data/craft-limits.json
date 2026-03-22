@@ -1,4 +1,7 @@
 {
   "lastVerified": "2026-03-22",
-  "limits": []
+  "limits": [
+    { "itemId": 46742, "itemName": "Spool of Silk Weaving Thread", "dailyCap": 1, "resetType": "daily" },
+    { "itemId": 46744, "itemName": "Spool of Thick Elonian Cord", "dailyCap": 1, "resetType": "daily" }
+  ]
 }

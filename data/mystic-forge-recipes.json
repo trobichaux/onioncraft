@@ -1,4 +1,32 @@
 {
   "lastVerified": "2026-03-22",
-  "recipes": []
+  "recipes": [
+    {
+      "outputItemId": 19976,
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 19925, "count": 250 },
+        { "itemId": 19924, "count": 1 },
+        { "itemId": 19926, "count": 1 }
+      ]
+    },
+    {
+      "outputItemId": 46762,
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 46742, "count": 10 },
+        { "itemId": 19721, "count": 50 },
+        { "itemId": 19685, "count": 1 }
+      ]
+    },
+    {
+      "outputItemId": 77449,
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 19721, "count": 100 },
+        { "itemId": 19685, "count": 5 },
+        { "itemId": 19675, "count": 2 }
+      ]
+    }
+  ]
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import NavLinks from './NavLinks';
 import AuthStatus from './AuthStatus';
 import './globals.css';
 
@@ -19,9 +20,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <header role="banner">
           <nav aria-label="Main navigation">
-            <a href="/" className="site-title">
-              OnionCraft
-            </a>
+            <div className="nav-left">
+              <a href="/" className="site-title">
+                OnionCraft
+              </a>
+              <NavLinks />
+            </div>
             <AuthStatus />
           </nav>
         </header>

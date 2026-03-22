@@ -167,8 +167,8 @@ staticwebapp.config.json      SWA routing + security headers
 | 3 | ✅ Done | Settings & API key management (validation, never-return-key) |
 | 4 | ✅ Done | Crafting profit calculator (recipe tree, overage, TP fees) |
 | 5 | ✅ Done | Skin collection tracker (catalog caching, priority rules) |
-| 6 | ⬜ Next | CI/CD pipeline (GitHub Actions, CodeQL, SWA deployment) |
-| 7 | ⬜ Next | Security hardening (OWASP audit, CSP headers, rate limiting) |
+| 6 | ✅ Done | CI/CD pipeline (GitHub Actions, CodeQL, SWA deployment) |
+| 7 | ✅ Done | Security hardening (OWASP audit, CSP headers, rate limiting) |
 
 ## Contributing
 

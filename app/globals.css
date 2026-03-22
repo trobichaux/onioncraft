@@ -269,6 +269,126 @@ footer {
   text-decoration: underline;
 }
 
+/* API Key settings */
+.api-key-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.permissions-info {
+  padding: 1.25rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.permissions-info h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.permissions-help {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.permissions-help a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.permissions-help a:hover {
+  text-decoration: underline;
+}
+
+.permissions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.permissions-list li {
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.perm-icon {
+  width: 1rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.perm-desc {
+  color: var(--color-text-muted);
+}
+
+.perm-granted .perm-icon {
+  color: var(--color-profit);
+}
+
+.perm-missing .perm-icon {
+  color: var(--color-loss);
+}
+
+.perm-missing strong {
+  color: var(--color-loss);
+}
+
+.key-status {
+  padding: 1rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+}
+
+.status-configured {
+  color: var(--color-profit);
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.key-meta {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.key-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.key-form label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.key-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.key-input-row input {
+  flex: 1;
+  font-family: monospace;
+}
+
 /* Shared component styles */
 h1 {
   font-size: 1.5rem;

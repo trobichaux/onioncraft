@@ -2,6 +2,16 @@
 
 import { useState, useEffect, useCallback, FormEvent } from 'react';
 
+const REQUIRED_PERMISSIONS = ['account', 'inventories', 'wallet', 'unlocks', 'characters'];
+
+const PERMISSION_DESCRIPTIONS: Record<string, string> = {
+  account: 'Basic account info and guild memberships',
+  inventories: 'Bank, material storage, and character inventories',
+  wallet: 'Currencies (gold, karma, spirit shards, etc.)',
+  unlocks: 'Unlocked skins, dyes, recipes, and minis',
+  characters: 'Character names, levels, and crafting disciplines',
+};
+
 interface ApiKeyStatus {
   hasKey: boolean;
   permissions?: string[];
@@ -85,52 +95,84 @@ export default function ApiKeyForm() {
   }
 
   return (
-    <div>
+    <div className="api-key-section">
+      <div className="permissions-info">
+        <h3>Required Permissions</h3>
+        <p className="permissions-help">
+          Create an API key at{' '}
+          <a href="https://account.arena.net/applications" target="_blank" rel="noopener noreferrer">
+            account.arena.net/applications
+          </a>{' '}
+          with these permissions enabled:
+        </p>
+        <ul className="permissions-list">
+          {REQUIRED_PERMISSIONS.map((perm) => {
+            const hasIt = status?.permissions?.includes(perm);
+            const isMissing = missingPermissions.includes(perm);
+            return (
+              <li key={perm} className={isMissing ? 'perm-missing' : hasIt ? 'perm-granted' : ''}>
+                <span className="perm-icon" aria-hidden="true">
+                  {isMissing ? '✗' : hasIt ? '✓' : '○'}
+                </span>
+                <strong>{perm}</strong>
+                <span className="perm-desc"> — {PERMISSION_DESCRIPTIONS[perm]}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
       {status?.hasKey && (
-        <div role="status" aria-live="polite">
-          <p><strong>API Key:</strong> Configured ✓</p>
-          <p>Permissions: {status.permissions?.join(', ')}</p>
+        <div className="key-status" role="status" aria-live="polite">
+          <p>
+            <span className="status-badge status-configured">✓ Configured</span>
+          </p>
           {status.validatedAt && (
-            <p>Validated: {new Date(status.validatedAt).toLocaleString()}</p>
+            <p className="key-meta">
+              Validated: {new Date(status.validatedAt).toLocaleString()}
+            </p>
           )}
-          <button type="button" onClick={handleDelete} disabled={loading}>
+          <button type="button" className="btn-danger" onClick={handleDelete} disabled={loading}>
             Remove API Key
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="key-form">
         <label htmlFor="api-key-input">
           GW2 API Key <span aria-hidden="true">*</span>
         </label>
-        <input
-          id="api-key-input"
-          type="password"
-          value={keyInput}
-          onChange={(e) => setKeyInput(e.target.value)}
-          required
-          aria-required="true"
-          placeholder="Enter your GW2 API key"
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading || !keyInput}>
-          {loading ? 'Validating...' : 'Save API Key'}
-        </button>
+        <div className="key-input-row">
+          <input
+            id="api-key-input"
+            type="password"
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            required
+            aria-required="true"
+            placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX..."
+            disabled={loading}
+          />
+          <button type="submit" disabled={loading || !keyInput}>
+            {loading ? 'Validating...' : 'Save API Key'}
+          </button>
+        </div>
       </form>
 
       {error && (
-        <div role="alert">
+        <div className="error" role="alert">
           <p>{error}</p>
           {missingPermissions.length > 0 && (
-            <p>Missing: {missingPermissions.join(', ')}</p>
+            <p>
+              Missing permissions: <strong>{missingPermissions.join(', ')}</strong>
+            </p>
           )}
         </div>
       )}
 
       {successPermissions && (
-        <div role="status" aria-live="polite">
-          <p>API key saved successfully!</p>
-          <p>Permissions: {successPermissions.join(', ')}</p>
+        <div className="success" role="status" aria-live="polite">
+          <p>✓ API key saved and validated successfully!</p>
         </div>
       )}
     </div>

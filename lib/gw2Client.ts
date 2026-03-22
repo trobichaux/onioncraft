@@ -127,7 +127,11 @@ export class Gw2Client {
     endpoint: string,
     params?: Record<string, string>,
   ): Promise<T> {
-    const url = new URL(endpoint, this.baseUrl);
+    // Ensure baseUrl ends with / so relative endpoint resolution works
+    const base = this.baseUrl.endsWith('/') ? this.baseUrl : this.baseUrl + '/';
+    // Strip leading / from endpoint to keep it relative to the base path
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const url = new URL(cleanEndpoint, base);
     if (params) {
       for (const [key, value] of Object.entries(params)) {
         url.searchParams.set(key, value);

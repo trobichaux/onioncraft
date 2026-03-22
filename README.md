@@ -128,6 +128,10 @@ The GW2 API client includes production-grade resilience:
 | GET/PUT | `/api/v1/settings/priority-rules` | Skin priority rules |
 | GET/PUT | `/api/v1/settings/character-filter` | Character filtering |
 | GET | `/api/v1/gw2/*` | Authenticated GW2 API proxy |
+| GET | `/api/v1/shopping-list` | Persisted shopping list (plugin-friendly) |
+| POST | `/api/v1/shopping-list` | Save items to shopping list |
+| PATCH | `/api/v1/shopping-list` | Toggle item completed status |
+| DELETE | `/api/v1/shopping-list` | Remove item or clear all |
 
 ## Design
 

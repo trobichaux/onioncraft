@@ -38,6 +38,8 @@ export default function ProfitTable() {
   const [needsKey, setNeedsKey] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('totalProfit');
   const [sortAsc, setSortAsc] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   const fetchProfitData = useCallback(async () => {
     setLoading(true);
@@ -78,6 +80,38 @@ export default function ProfitTable() {
   const getSortDirection = (key: SortKey): 'ascending' | 'descending' | 'none' => {
     if (sortKey !== key) return 'none';
     return sortAsc ? 'ascending' : 'descending';
+  };
+
+  const handleSaveToShoppingList = async () => {
+    if (!data || data.items.length === 0) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const res = await fetch('/api/v1/shopping-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: data.items.map((item) => ({
+            itemId: item.itemId,
+            itemName: item.itemName,
+            quantity: item.quantity,
+            action: 'craft',
+            unitProfit: item.profitPerUnit,
+            totalProfit: item.totalProfit,
+          })),
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setSaveMsg(`Saved ${json.saved} items to Shopping List`);
+      } else {
+        setSaveMsg('Failed to save');
+      }
+    } catch {
+      setSaveMsg('Failed to save');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <p>Loading profit data…</p>;
@@ -178,6 +212,17 @@ export default function ProfitTable() {
           ))}
         </tbody>
       </table>
+      <div className="profit-actions">
+        <button
+          type="button"
+          onClick={handleSaveToShoppingList}
+          disabled={saving}
+          className="btn-primary"
+        >
+          {saving ? 'Saving…' : '📋 Save to Shopping List'}
+        </button>
+        {saveMsg && <span className="save-msg">{saveMsg}</span>}
+      </div>
     </div>
   );
 }

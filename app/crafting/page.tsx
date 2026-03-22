@@ -1,6 +1,7 @@
 import GoalsPanel from './GoalsPanel';
 import ProfitTable from './ProfitTable';
 import RefreshButton from './RefreshButton';
+import ShoppingList from './ShoppingList';
 
 export default function CraftingPage() {
   return (
@@ -24,6 +25,15 @@ export default function CraftingPage() {
         </p>
         <RefreshButton />
         <ProfitTable />
+      </section>
+
+      <section aria-labelledby="shopping-heading">
+        <h2 id="shopping-heading">Shopping List</h2>
+        <p className="section-desc">
+          Your saved crafting plan. Check off items as you complete them in-game.
+          This list persists between visits and will be available to external plugins.
+        </p>
+        <ShoppingList />
       </section>
     </div>
   );

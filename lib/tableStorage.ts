@@ -20,7 +20,7 @@ function getConnectionString(): string {
   return connStr;
 }
 
-const TABLE_NAMES = ['Settings', 'PriceCache', 'GoalProgress', 'SkinCache'] as const;
+const TABLE_NAMES = ['Settings', 'PriceCache', 'GoalProgress', 'SkinCache', 'ShoppingList'] as const;
 export type TableName = (typeof TABLE_NAMES)[number];
 
 const tableClients = new Map<TableName, TableClient>();
@@ -325,5 +325,120 @@ export async function putCachedSkins(
       'Replace',
     ]);
     await client.submitTransaction(actions);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ShoppingList
+// ---------------------------------------------------------------------------
+
+export interface ShoppingListItem {
+  itemId: number;
+  itemName: string;
+  quantity: number;
+  action: 'craft' | 'buy' | 'farm';
+  unitProfit: number;
+  totalProfit: number;
+  completed: boolean;
+  addedAt: string;
+}
+
+export async function getShoppingList(userId: string): Promise<ShoppingListItem[]> {
+  const client = await getTableClient('ShoppingList');
+  const results: ShoppingListItem[] = [];
+
+  const entities = client.listEntities<{
+    itemId: number;
+    itemName: string;
+    quantity: number;
+    action: string;
+    unitProfit: number;
+    totalProfit: number;
+    completed: boolean;
+    addedAt: string;
+  }>({
+    queryOptions: { filter: `PartitionKey eq '${userId}'` },
+  });
+
+  for await (const entity of entities) {
+    results.push({
+      itemId: entity.itemId,
+      itemName: entity.itemName,
+      quantity: entity.quantity,
+      action: entity.action as 'craft' | 'buy' | 'farm',
+      unitProfit: entity.unitProfit,
+      totalProfit: entity.totalProfit,
+      completed: entity.completed,
+      addedAt: entity.addedAt,
+    });
+  }
+
+  return results;
+}
+
+export async function putShoppingListItems(
+  userId: string,
+  items: ShoppingListItem[],
+): Promise<void> {
+  if (items.length === 0) return;
+  const client = await getTableClient('ShoppingList');
+  const batches = chunk(items, 100);
+
+  for (const batch of batches) {
+    const actions: TransactionAction[] = batch.map((item) => [
+      'upsert',
+      {
+        partitionKey: userId,
+        rowKey: String(item.itemId),
+        ...item,
+      },
+      'Replace',
+    ]);
+    await client.submitTransaction(actions);
+  }
+}
+
+export async function toggleShoppingListItem(
+  userId: string,
+  itemId: string,
+  completed: boolean,
+): Promise<void> {
+  const client = await getTableClient('ShoppingList');
+  try {
+    const entity = await client.getEntity<Record<string, unknown>>(userId, itemId);
+    await client.upsertEntity(
+      {
+        partitionKey: userId,
+        rowKey: itemId,
+        ...entity,
+        completed,
+      },
+      'Replace',
+    );
+  } catch (err) {
+    if (err instanceof RestError && err.statusCode === 404) {
+      throw new Error('Shopping list item not found');
+    }
+    throw err;
+  }
+}
+
+export async function deleteShoppingListItem(userId: string, itemId: string): Promise<void> {
+  const client = await getTableClient('ShoppingList');
+  try {
+    await client.deleteEntity(userId, itemId);
+  } catch (err) {
+    if (err instanceof RestError && err.statusCode === 404) return;
+    throw err;
+  }
+}
+
+export async function clearShoppingList(userId: string): Promise<void> {
+  const client = await getTableClient('ShoppingList');
+  const entities = client.listEntities<{ rowKey: string }>({
+    queryOptions: { filter: `PartitionKey eq '${userId}'` },
+  });
+  for await (const entity of entities) {
+    await client.deleteEntity(userId, entity.rowKey as string);
   }
 }

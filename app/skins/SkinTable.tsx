@@ -38,6 +38,7 @@ export default function SkinTable() {
   const [data, setData] = useState<CollectionResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsKey, setNeedsKey] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -46,11 +47,16 @@ export default function SkinTable() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setNeedsKey(false);
     try {
       const res = await fetch('/api/v1/skins/collection');
       const json: CollectionResponse = await res.json();
       if (!res.ok) {
-        setError(json.error ?? 'Failed to load collection');
+        if (json.error === 'API key required') {
+          setNeedsKey(true);
+        } else {
+          setError(json.error ?? 'Failed to load collection');
+        }
       } else {
         setData(json);
       }
@@ -76,6 +82,14 @@ export default function SkinTable() {
 
   if (loading) {
     return <p role="status">Loading skin collection…</p>;
+  }
+
+  if (needsKey) {
+    return (
+      <div className="info-box">
+        <p>Add your GW2 API key on the <a href="/settings">Settings page</a> to see your unowned skins.</p>
+      </div>
+    );
   }
 
   if (error) {

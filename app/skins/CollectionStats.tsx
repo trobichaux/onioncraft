@@ -12,13 +12,20 @@ export default function CollectionStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [needsKey, setNeedsKey] = useState(false);
+
   const fetchStats = useCallback(async () => {
     setLoading(true);
+    setNeedsKey(false);
     try {
       const res = await fetch('/api/v1/skins/collection');
       const json = await res.json() as CollectionData & { error?: string };
       if (!res.ok) {
-        setError(json.error ?? 'Failed to load stats');
+        if (json.error === 'API key required') {
+          setNeedsKey(true);
+        } else {
+          setError(json.error ?? 'Failed to load stats');
+        }
       } else {
         setData(json);
       }
@@ -35,6 +42,14 @@ export default function CollectionStats() {
 
   if (loading) {
     return <p role="status">Loading collection stats…</p>;
+  }
+
+  if (needsKey) {
+    return (
+      <div className="info-box">
+        <p>Add your GW2 API key on the <a href="/settings">Settings page</a> to see your collection progress.</p>
+      </div>
+    );
   }
 
   if (error) {

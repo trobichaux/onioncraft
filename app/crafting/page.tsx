@@ -9,11 +9,19 @@ export default function CraftingPage() {
 
       <section aria-labelledby="goals-heading">
         <h2 id="goals-heading">Crafting Goals</h2>
+        <p className="section-desc">
+          Add items you&apos;re saving materials for (e.g. legendaries). Materials needed for these
+          goals will be <strong>reserved</strong> and excluded from profit calculations.
+        </p>
         <GoalsPanel />
       </section>
 
       <section aria-labelledby="profit-heading">
-        <h2 id="profit-heading">Profit Analysis</h2>
+        <h2 id="profit-heading">Profitable Crafts</h2>
+        <p className="section-desc">
+          Shows the most profitable items you can craft from your <strong>remaining</strong> materials
+          (after reserving for goals). Click Refresh Prices to update TP data and recalculate.
+        </p>
         <RefreshButton />
         <ProfitTable />
       </section>

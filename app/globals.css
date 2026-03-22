@@ -517,6 +517,24 @@ footer {
   color: var(--color-loss);
 }
 
+.profit-meta {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.daily-cap-badge {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.section-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
 /* Info / help boxes */
 .info-box {
   padding: 1rem 1.25rem;

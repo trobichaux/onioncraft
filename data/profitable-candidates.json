@@ -1,0 +1,14 @@
+{
+  "lastVerified": "2026-03-22",
+  "description": "Craftable items commonly evaluated for TP profit. Recipes come from mystic-forge-recipes.json or the GW2 API.",
+  "candidates": [
+    { "itemId": 46735, "itemName": "Deldrimor Steel Ingot", "category": "ascended_material" },
+    { "itemId": 46738, "itemName": "Bolt of Damask", "category": "ascended_material" },
+    { "itemId": 46736, "itemName": "Spiritwood Plank", "category": "ascended_material" },
+    { "itemId": 84347, "itemName": "Elonian Leather Square", "category": "ascended_material" },
+    { "itemId": 46742, "itemName": "Lump of Mithrillium", "category": "daily_gated" },
+    { "itemId": 46740, "itemName": "Spool of Silk Weaving Thread", "category": "daily_gated" },
+    { "itemId": 46739, "itemName": "Glob of Elder Spirit Residue", "category": "daily_gated" },
+    { "itemId": 84354, "itemName": "Spool of Thick Elonian Cord", "category": "daily_gated" }
+  ]
+}

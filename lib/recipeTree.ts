@@ -200,3 +200,34 @@ function flattenLeafRequirements(
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// maxCraftableFromInventory — how many of this item can be crafted?
+// ---------------------------------------------------------------------------
+
+/**
+ * Given a recipe tree built for count=1 and a map of available materials,
+ * return the maximum number of times this recipe can be crafted.
+ * The bottleneck is the scarcest leaf ingredient.
+ */
+export function maxCraftableFromInventory(
+  tree: RecipeNode,
+  available: Map<number, number>,
+): number {
+  if (!tree.craftable) return 0;
+
+  const leafReqs = new Map<number, number>();
+  flattenLeafRequirements(tree, leafReqs);
+
+  if (leafReqs.size === 0) return 0;
+
+  let minCraftable = Infinity;
+  for (const [itemId, requiredPerCraft] of leafReqs) {
+    if (requiredPerCraft <= 0) continue;
+    const avail = available.get(itemId) ?? 0;
+    const craftable = Math.floor(avail / requiredPerCraft);
+    minCraftable = Math.min(minCraftable, craftable);
+  }
+
+  return minCraftable === Infinity ? 0 : minCraftable;
+}

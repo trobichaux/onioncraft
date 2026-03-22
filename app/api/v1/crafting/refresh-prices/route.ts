@@ -2,24 +2,28 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth';
-import { getGoals, putCachedPrices } from '@/lib/tableStorage';
+import { getGoals, getSetting, putCachedPrices } from '@/lib/tableStorage';
 import { GoalProgressSchema } from '@/lib/schemas';
 import { buildRecipeTree } from '@/lib/recipeTree';
 import type { Recipe, Item, RecipeNode } from '@/lib/recipeTree';
 import { Gw2Client } from '@/lib/gw2Client';
+import candidatesData from '@/data/profitable-candidates.json';
 
-function collectLeafItemIds(node: RecipeNode, ids: Set<number>): void {
-  if (node.ingredients.length === 0) {
-    ids.add(node.itemId);
-  } else {
-    for (const child of node.ingredients) {
-      collectLeafItemIds(child, ids);
-    }
+function collectAllItemIds(node: RecipeNode, ids: Set<number>): void {
+  ids.add(node.itemId);
+  for (const child of node.ingredients) {
+    collectAllItemIds(child, ids);
   }
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = getRequestUser(req);
+
+  // Get API key for authenticated endpoints
+  const apiKeyRaw = await getSetting(user.id, 'apiKey');
+  const client = apiKeyRaw
+    ? new Gw2Client({ apiKey: (JSON.parse(apiKeyRaw) as { key: string }).key })
+    : new Gw2Client();
 
   const records = await getGoals(user.id);
 
@@ -30,39 +34,62 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
     .filter((g): g is NonNullable<typeof g> => g !== null);
 
-  if (goals.length === 0) {
-    return NextResponse.json({ refreshed: 0, cachedAt: new Date().toISOString() });
-  }
-
-  // Build recipe trees to discover all leaf item IDs
+  // Standard crafting recipes map (empty — buildRecipeTree uses mystic forge JSON)
   const recipes = new Map<number, Recipe>();
   const items = new Map<number, Item>();
+
+  // Register goal items
   for (const goal of goals) {
-    items.set(goal.itemId, {
-      id: goal.itemId,
-      name: goal.itemName,
-      flags: [],
-    });
+    items.set(goal.itemId, { id: goal.itemId, name: goal.itemName, flags: [] });
   }
 
-  const allLeafIds = new Set<number>();
-  // Also include goal item IDs for sell price lookups
+  // Register candidate items
+  const candidates = (candidatesData as { candidates: Array<{ itemId: number; itemName: string }> }).candidates;
+  for (const c of candidates) {
+    items.set(c.itemId, { id: c.itemId, name: c.itemName, flags: [] });
+  }
+
+  // Build recipe trees for goals + candidates to discover all item IDs needing prices
+  const allItemIds = new Set<number>();
+
   for (const goal of goals) {
-    allLeafIds.add(goal.itemId);
     const tree = buildRecipeTree(goal.itemId, recipes, items);
-    collectLeafItemIds(tree, allLeafIds);
+    collectAllItemIds(tree, allItemIds);
   }
 
-  const itemIds = [...allLeafIds];
+  for (const c of candidates) {
+    const tree = buildRecipeTree(c.itemId, recipes, items);
+    collectAllItemIds(tree, allItemIds);
+  }
 
-  // Fetch prices from GW2 API
-  const client = new Gw2Client();
+  const itemIds = [...allItemIds];
+
+  // Fetch TP prices for all discovered items
   interface GW2Price {
     id: number;
     buys?: { unit_price: number };
     sells?: { unit_price: number };
   }
-  const priceData = await client.getBulk<GW2Price>('/commerce/prices', itemIds);
+
+  let priceData: GW2Price[] = [];
+  if (itemIds.length > 0) {
+    try {
+      priceData = await client.getBulk<GW2Price>('/commerce/prices', itemIds);
+    } catch {
+      // Some items may not be tradeable — fetch in smaller batches
+      for (let i = 0; i < itemIds.length; i += 200) {
+        try {
+          const batch = await client.getBulk<GW2Price>(
+            '/commerce/prices',
+            itemIds.slice(i, i + 200),
+          );
+          priceData.push(...batch);
+        } catch {
+          // Skip batches with untradeable items
+        }
+      }
+    }
+  }
 
   const cachedAt = new Date().toISOString();
   const priceEntries = priceData.map((p) => ({

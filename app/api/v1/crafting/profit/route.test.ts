@@ -8,11 +8,15 @@ import { GET } from './route';
 const mockGetGoals = jest.fn();
 const mockGetSetting = jest.fn();
 const mockGetCachedPrices = jest.fn();
+const mockGetCachedRecipes = jest.fn();
+const mockGetCachedItems = jest.fn();
 
 jest.mock('@/lib/tableStorage', () => ({
   getGoals: (...args: unknown[]) => mockGetGoals(...args),
   getSetting: (...args: unknown[]) => mockGetSetting(...args),
   getCachedPrices: (...args: unknown[]) => mockGetCachedPrices(...args),
+  getCachedRecipes: (...args: unknown[]) => mockGetCachedRecipes(...args),
+  getCachedItems: (...args: unknown[]) => mockGetCachedItems(...args),
 }));
 
 jest.mock('@/lib/auth', () => ({
@@ -25,14 +29,8 @@ jest.mock('@/lib/inventory', () => ({
   fetchInventory: (...args: unknown[]) => mockFetchInventory(...args),
 }));
 
-const mockGw2Get = jest.fn();
-const mockGw2GetBulk = jest.fn();
-
 jest.mock('@/lib/gw2Client', () => ({
-  Gw2Client: jest.fn().mockImplementation(() => ({
-    get: mockGw2Get,
-    getBulk: mockGw2GetBulk,
-  })),
+  Gw2Client: jest.fn().mockImplementation(() => ({})),
   Gw2ApiError: class extends Error {
     constructor(
       public status: number,
@@ -54,31 +52,40 @@ function makeRequest(): NextRequest {
   });
 }
 
+const MOCK_API_KEY = JSON.stringify({
+  key: 'test-key',
+  permissions: [],
+  validatedAt: '2026-01-01T00:00:00.000Z',
+});
+
+function makeAccountData(overrides: Record<string, unknown> = {}): string {
+  const base = {
+    knownRecipeIds: [] as number[],
+    characters: [
+      {
+        name: 'TestChar',
+        disciplines: [
+          { discipline: 'Weaponsmith', rating: 500 },
+          { discipline: 'Armorsmith', rating: 500 },
+          { discipline: 'Artificer', rating: 500 },
+          { discipline: 'Huntsman', rating: 500 },
+          { discipline: 'Tailor', rating: 500 },
+          { discipline: 'Leatherworker', rating: 500 },
+          { discipline: 'Chef', rating: 400 },
+          { discipline: 'Jeweler', rating: 400 },
+        ],
+      },
+    ],
+    cachedAt: new Date().toISOString(),
+  };
+  return JSON.stringify({ ...base, ...overrides });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
-  // Default GW2 API mocks
-  mockGw2Get.mockImplementation((endpoint: string) => {
-    if (endpoint === '/account/recipes') return Promise.resolve([]);
-    if (endpoint === '/characters') return Promise.resolve(['TestChar']);
-    if (endpoint.includes('/crafting')) {
-      return Promise.resolve([
-        { discipline: 'Weaponsmith', rating: 500, active: true },
-        { discipline: 'Armorsmith', rating: 500, active: true },
-        { discipline: 'Artificer', rating: 500, active: true },
-        { discipline: 'Huntsman', rating: 500, active: true },
-        { discipline: 'Tailor', rating: 500, active: true },
-        { discipline: 'Leatherworker', rating: 500, active: true },
-        { discipline: 'Chef', rating: 400, active: false },
-        { discipline: 'Jeweler', rating: 400, active: false },
-      ]);
-    }
-    return Promise.resolve([]);
-  });
-  mockGw2GetBulk.mockImplementation((endpoint: string) => {
-    if (endpoint === '/recipes') return Promise.resolve([]);
-    if (endpoint === '/items') return Promise.resolve([]);
-    return Promise.resolve([]);
-  });
+  mockGetGoals.mockResolvedValue([]);
+  mockGetCachedRecipes.mockResolvedValue(new Map());
+  mockGetCachedItems.mockResolvedValue(new Map());
 });
 
 // ---------------------------------------------------------------------------
@@ -96,17 +103,26 @@ describe('GET /api/v1/crafting/profit', () => {
     expect(json.error).toContain('API key');
   });
 
-  it('returns items array when API key is configured', async () => {
-    const apiKey = JSON.stringify({
-      key: 'test-key',
-      permissions: [],
-      validatedAt: '2026-01-01T00:00:00.000Z',
-    });
+  it('returns 400 with needsInit when account data is not initialized', async () => {
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
-      if (key === 'apiKey') return Promise.resolve(apiKey);
+      if (key === 'apiKey') return Promise.resolve(MOCK_API_KEY);
       return Promise.resolve(null);
     });
-    mockGetGoals.mockResolvedValue([]);
+
+    const res = await GET(makeRequest());
+    const json = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(json.needsInit).toBe(true);
+    expect(json.error).toContain('not initialized');
+  });
+
+  it('returns items array when API key and account data are configured', async () => {
+    mockGetSetting.mockImplementation((_userId: string, key: string) => {
+      if (key === 'apiKey') return Promise.resolve(MOCK_API_KEY);
+      if (key === 'accountData') return Promise.resolve(makeAccountData());
+      return Promise.resolve(null);
+    });
     mockFetchInventory.mockResolvedValue(new Map<number, number>());
     mockGetCachedPrices.mockResolvedValue(new Map());
 
@@ -120,58 +136,61 @@ describe('GET /api/v1/crafting/profit', () => {
     expect(json.knownRecipes).toBe(0);
     expect(json.craftableWithDiscipline).toBe(0);
     expect(json.craftableWithMaterials).toBe(0);
+    expect(json.cacheAge).toBeDefined();
   });
 
   it('evaluates known recipes against available inventory', async () => {
-    const apiKey = JSON.stringify({
-      key: 'test-key',
-      permissions: [],
-      validatedAt: '2026-01-01T00:00:00.000Z',
+    const accountData = makeAccountData({
+      knownRecipeIds: [12345],
+      characters: [
+        {
+          name: 'TestChar',
+          disciplines: [{ discipline: 'Weaponsmith', rating: 500 }],
+        },
+      ],
     });
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
-      if (key === 'apiKey') return Promise.resolve(apiKey);
+      if (key === 'apiKey') return Promise.resolve(MOCK_API_KEY);
+      if (key === 'accountData') return Promise.resolve(accountData);
       return Promise.resolve(null);
     });
-    mockGetGoals.mockResolvedValue([]);
 
-    // GW2 API: user knows recipe 12345 which outputs item 46735 (Deldrimor Steel Ingot)
-    mockGw2Get.mockImplementation((endpoint: string) => {
-      if (endpoint === '/account/recipes') return Promise.resolve([12345]);
-      if (endpoint === '/characters') return Promise.resolve(['TestChar']);
-      if (endpoint.includes('/crafting')) {
-        return Promise.resolve([{ discipline: 'Weaponsmith', rating: 500, active: true }]);
-      }
-      return Promise.resolve([]);
-    });
-
-    mockGw2GetBulk.mockImplementation((endpoint: string) => {
-      if (endpoint === '/recipes') {
-        return Promise.resolve([
+    // Cached recipe for Deldrimor Steel Ingot
+    mockGetCachedRecipes.mockResolvedValue(
+      new Map([
+        [
+          '12345',
           {
-            id: 12345,
-            type: 'Refinement',
-            output_item_id: 46735,
-            output_item_count: 1,
-            min_rating: 450,
-            disciplines: ['Weaponsmith'],
-            ingredients: [
-              { item_id: 46742, count: 1 },
-              { item_id: 19684, count: 3 },
-            ],
+            outputItemId: 46735,
+            outputItemCount: 1,
+            minRating: 450,
+            disciplines: JSON.stringify(['Weaponsmith']),
+            ingredients: JSON.stringify([
+              { itemId: 46742, count: 1 },
+              { itemId: 19684, count: 3 },
+            ]),
+            cachedAt: '2026-01-01T00:00:00.000Z',
           },
-        ]);
-      }
-      if (endpoint === '/items') {
-        return Promise.resolve([
-          { id: 46735, name: 'Deldrimor Steel Ingot', flags: [] },
-          { id: 46742, name: 'Lump of Mithrillium', flags: [] },
-          { id: 19684, name: 'Mithril Ingot', flags: [] },
-        ]);
-      }
-      return Promise.resolve([]);
-    });
+        ],
+      ])
+    );
 
-    // Provide materials
+    // Cached items
+    mockGetCachedItems.mockResolvedValue(
+      new Map([
+        [
+          '46735',
+          { name: 'Deldrimor Steel Ingot', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+        [
+          '46742',
+          { name: 'Lump of Mithrillium', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+        ['19684', { name: 'Mithril Ingot', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' }],
+      ])
+    );
+
+    // Provide materials (live inventory from GW2 API)
     mockFetchInventory.mockResolvedValue(
       new Map<number, number>([
         [46742, 5],
@@ -202,13 +221,18 @@ describe('GET /api/v1/crafting/profit', () => {
   });
 
   it('reserves materials for goals before evaluating profit', async () => {
-    const apiKey = JSON.stringify({
-      key: 'test-key',
-      permissions: [],
-      validatedAt: '2026-01-01T00:00:00.000Z',
+    const accountData = makeAccountData({
+      knownRecipeIds: [12345],
+      characters: [
+        {
+          name: 'TestChar',
+          disciplines: [{ discipline: 'Weaponsmith', rating: 500 }],
+        },
+      ],
     });
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
-      if (key === 'apiKey') return Promise.resolve(apiKey);
+      if (key === 'apiKey') return Promise.resolve(MOCK_API_KEY);
+      if (key === 'accountData') return Promise.resolve(accountData);
       return Promise.resolve(null);
     });
 
@@ -220,44 +244,42 @@ describe('GET /api/v1/crafting/profit', () => {
       },
     ]);
 
-    // User knows recipe for Deldrimor
-    mockGw2Get.mockImplementation((endpoint: string) => {
-      if (endpoint === '/account/recipes') return Promise.resolve([12345]);
-      if (endpoint === '/characters') return Promise.resolve(['TestChar']);
-      if (endpoint.includes('/crafting')) {
-        return Promise.resolve([{ discipline: 'Weaponsmith', rating: 500, active: true }]);
-      }
-      return Promise.resolve([]);
-    });
-
-    mockGw2GetBulk.mockImplementation((endpoint: string) => {
-      if (endpoint === '/recipes') {
-        return Promise.resolve([
+    // Cached recipe
+    mockGetCachedRecipes.mockResolvedValue(
+      new Map([
+        [
+          '12345',
           {
-            id: 12345,
-            type: 'Refinement',
-            output_item_id: 46735,
-            output_item_count: 1,
-            min_rating: 450,
-            disciplines: ['Weaponsmith'],
-            ingredients: [
-              { item_id: 46742, count: 1 },
-              { item_id: 19684, count: 3 },
-            ],
+            outputItemId: 46735,
+            outputItemCount: 1,
+            minRating: 450,
+            disciplines: JSON.stringify(['Weaponsmith']),
+            ingredients: JSON.stringify([
+              { itemId: 46742, count: 1 },
+              { itemId: 19684, count: 3 },
+            ]),
+            cachedAt: '2026-01-01T00:00:00.000Z',
           },
-        ]);
-      }
-      if (endpoint === '/items') {
-        return Promise.resolve([
-          { id: 46735, name: 'Deldrimor Steel Ingot', flags: [] },
-          { id: 46742, name: 'Lump of Mithrillium', flags: [] },
-          { id: 19684, name: 'Mithril Ingot', flags: [] },
-        ]);
-      }
-      return Promise.resolve([]);
-    });
+        ],
+      ])
+    );
 
-    // Only 1 Lump of Mithrillium — the goal needs 1, leaving 0 for profit crafting
+    // Cached items
+    mockGetCachedItems.mockResolvedValue(
+      new Map([
+        [
+          '46735',
+          { name: 'Deldrimor Steel Ingot', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+        [
+          '46742',
+          { name: 'Lump of Mithrillium', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+        ['19684', { name: 'Mithril Ingot', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' }],
+      ])
+    );
+
+    // Only 1 Lump of Mithrillium - the goal needs 1, leaving 0 for profit crafting
     mockFetchInventory.mockResolvedValue(
       new Map<number, number>([
         [46742, 1],
@@ -284,17 +306,56 @@ describe('GET /api/v1/crafting/profit', () => {
   });
 
   it('excludes items in the exclusion list', async () => {
-    const apiKey = JSON.stringify({
-      key: 'test-key',
-      permissions: [],
-      validatedAt: '2026-01-01T00:00:00.000Z',
+    const accountData = makeAccountData({
+      knownRecipeIds: [12345],
+      characters: [
+        {
+          name: 'TestChar',
+          disciplines: [{ discipline: 'Weaponsmith', rating: 500 }],
+        },
+      ],
     });
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
-      if (key === 'apiKey') return Promise.resolve(apiKey);
+      if (key === 'apiKey') return Promise.resolve(MOCK_API_KEY);
+      if (key === 'accountData') return Promise.resolve(accountData);
       if (key === 'exclusionList') return Promise.resolve(JSON.stringify([46735]));
       return Promise.resolve(null);
     });
-    mockGetGoals.mockResolvedValue([]);
+
+    // Cached recipe
+    mockGetCachedRecipes.mockResolvedValue(
+      new Map([
+        [
+          '12345',
+          {
+            outputItemId: 46735,
+            outputItemCount: 1,
+            minRating: 450,
+            disciplines: JSON.stringify(['Weaponsmith']),
+            ingredients: JSON.stringify([
+              { itemId: 46742, count: 1 },
+              { itemId: 19684, count: 3 },
+            ]),
+            cachedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      ])
+    );
+
+    // Cached items
+    mockGetCachedItems.mockResolvedValue(
+      new Map([
+        [
+          '46735',
+          { name: 'Deldrimor Steel Ingot', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+        [
+          '46742',
+          { name: 'Lump of Mithrillium', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' },
+        ],
+        ['19684', { name: 'Mithril Ingot', flags: '[]', cachedAt: '2026-01-01T00:00:00.000Z' }],
+      ])
+    );
 
     mockFetchInventory.mockResolvedValue(
       new Map<number, number>([

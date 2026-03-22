@@ -3,8 +3,15 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, isUser } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { getGoals, getSetting, getCachedPrices } from '@/lib/tableStorage';
-import { GoalProgressSchema, ExclusionListSchema } from '@/lib/schemas';
+import {
+  getGoals,
+  getSetting,
+  getCachedPrices,
+  getCachedRecipes,
+  getCachedItems,
+} from '@/lib/tableStorage';
+import { GoalProgressSchema, ExclusionListSchema, AccountDataSchema } from '@/lib/schemas';
+import type { AccountData } from '@/lib/schemas';
 import { buildRecipeTree, calculateOverages, maxCraftableFromInventory } from '@/lib/recipeTree';
 import type { Recipe, Item, RecipeNode } from '@/lib/recipeTree';
 import { calculateProfit } from '@/lib/profitCalc';
@@ -37,20 +44,15 @@ interface ProfitEntry {
   levelRequired?: number;
 }
 
-interface GW2Recipe {
-  id: number;
-  type: string;
-  output_item_id: number;
-  output_item_count: number;
-  min_rating: number;
-  disciplines: string[];
-  ingredients: Array<{ item_id: number; count: number }>;
-}
-
-interface CharacterCrafting {
-  discipline: string;
-  rating: number;
-  active: boolean;
+function formatCacheAge(cachedAt: string): string {
+  const ageMs = Date.now() - new Date(cachedAt).getTime();
+  const ageMinutes = Math.floor(ageMs / (1000 * 60));
+  if (ageMinutes < 1) return 'just now';
+  if (ageMinutes < 60) return `${ageMinutes} minute${ageMinutes !== 1 ? 's' : ''} ago`;
+  const ageHours = Math.floor(ageMinutes / 60);
+  if (ageHours < 24) return `${ageHours} hour${ageHours !== 1 ? 's' : ''} ago`;
+  const ageDays = Math.floor(ageHours / 24);
+  return `${ageDays} day${ageDays !== 1 ? 's' : ''} ago`;
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -61,7 +63,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
   try {
-    const apiKeyRaw = await getSetting(user.id, 'apiKey');
+    // Phase 1: Read all settings and account data in parallel
+    const [apiKeyRaw, accountDataRaw, records, exclusionRaw, charFilterRaw] = await Promise.all([
+      getSetting(user.id, 'apiKey'),
+      getSetting(user.id, 'accountData'),
+      getGoals(user.id),
+      getSetting(user.id, 'exclusionList'),
+      getSetting(user.id, 'characterFilter'),
+    ]);
+
     if (!apiKeyRaw) {
       return NextResponse.json(
         { error: 'API key required. Add your GW2 API key on the Settings page.' },
@@ -69,15 +79,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       );
     }
 
+    if (!accountDataRaw) {
+      return NextResponse.json(
+        {
+          error:
+            'Account data not initialized. Click "Initialize Account" to load your recipes and characters.',
+          needsInit: true,
+        },
+        { status: 400 }
+      );
+    }
+
     const { key } = JSON.parse(apiKeyRaw) as { key: string };
     const client = new Gw2Client({ apiKey: key });
 
-    // Fetch settings in parallel
-    const [records, exclusionRaw, charFilterRaw] = await Promise.all([
-      getGoals(user.id),
-      getSetting(user.id, 'exclusionList'),
-      getSetting(user.id, 'characterFilter'),
-    ]);
+    // Parse and validate cached account data (recipes + character disciplines)
+    const accountData: AccountData = AccountDataSchema.parse(JSON.parse(accountDataRaw));
+    const cacheAge = formatCacheAge(accountData.cachedAt);
 
     let charFilter: string[] | undefined;
     if (charFilterRaw) {
@@ -88,94 +106,71 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Fetch inventory, known recipes, and character names in parallel
-    const [inventory, knownRecipeIds, characterNames] = await Promise.all([
+    // Build discipline map from cached character data
+    const disciplineMap = new Map<string, number>();
+    const charsToUse = charFilter
+      ? accountData.characters.filter((c) => charFilter!.includes(c.name))
+      : accountData.characters;
+    for (const char of charsToUse) {
+      for (const d of char.disciplines) {
+        const current = disciplineMap.get(d.discipline) ?? 0;
+        if (d.rating > current) disciplineMap.set(d.discipline, d.rating);
+      }
+    }
+
+    // Phase 2: Fetch live inventory (GW2 API) and cached recipes in parallel
+    const recipeIdStrs = accountData.knownRecipeIds.map(String);
+    const [inventory, cachedRecipes] = await Promise.all([
       fetchInventory(client, charFilter),
-      client.get<number[]>('/account/recipes'),
-      client.get<string[]>('/characters'),
+      getCachedRecipes(recipeIdStrs),
     ]);
 
-    // Build discipline map from characters
-    const disciplineMap = new Map<string, number>();
-    const charsToCheck = charFilter ?? characterNames;
-    for (const charName of charsToCheck) {
-      try {
-        const crafting = await client.get<CharacterCrafting[]>(
-          `/characters/${encodeURIComponent(charName)}/crafting`
-        );
-        for (const d of crafting) {
-          const current = disciplineMap.get(d.discipline) ?? 0;
-          if (d.rating > current) {
-            disciplineMap.set(d.discipline, d.rating);
-          }
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch character disciplines', {
-          character: charName,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
+    // Build recipes map from cached data
+    const recipes = new Map<number, Recipe>();
+    for (const [, cached] of cachedRecipes) {
+      const ingredients = JSON.parse(cached.ingredients) as Array<{
+        itemId: number;
+        count: number;
+      }>;
+      recipes.set(cached.outputItemId, {
+        outputItemId: cached.outputItemId,
+        outputItemCount: cached.outputItemCount,
+        disciplines: JSON.parse(cached.disciplines) as string[],
+        minRating: cached.minRating,
+        ingredients,
+      });
     }
 
-    logger.info('Fetched crafting data', {
+    // Collect all item IDs needed (recipe outputs + ingredients)
+    const allItemIds = new Set<number>();
+    for (const [, cached] of cachedRecipes) {
+      allItemIds.add(cached.outputItemId);
+      const ings = JSON.parse(cached.ingredients) as Array<{ itemId: number }>;
+      for (const ing of ings) allItemIds.add(ing.itemId);
+    }
+
+    // Phase 3: Read cached items from ItemCache table
+    const cachedItems = await getCachedItems([...allItemIds].map(String));
+    const items = new Map<number, Item>();
+    for (const [idStr, cached] of cachedItems) {
+      items.set(Number(idStr), {
+        id: Number(idStr),
+        name: cached.name,
+        type: cached.type,
+        rarity: cached.rarity,
+        flags: JSON.parse(cached.flags) as string[],
+      });
+    }
+
+    logger.info('Loaded crafting data from cache', {
       userId: user.id,
-      knownRecipes: knownRecipeIds.length,
+      knownRecipes: accountData.knownRecipeIds.length,
+      cachedRecipes: cachedRecipes.size,
+      cachedItems: cachedItems.size,
       inventorySize: inventory.size,
       disciplines: Object.fromEntries(disciplineMap),
+      cacheAge,
     });
-
-    // Batch fetch recipe details from GW2 API
-    const gw2Recipes = await client.getBulk<GW2Recipe>('/recipes', knownRecipeIds);
-
-    // Build recipes map for buildRecipeTree
-    const recipes = new Map<number, Recipe>();
-    for (const r of gw2Recipes) {
-      recipes.set(r.output_item_id, {
-        outputItemId: r.output_item_id,
-        outputItemCount: r.output_item_count,
-        disciplines: r.disciplines,
-        minRating: r.min_rating,
-        ingredients: r.ingredients.map((ing) => ({
-          itemId: ing.item_id,
-          count: ing.count,
-        })),
-      });
-    }
-
-    // Collect all item IDs for details fetch (outputs + ingredients)
-    const allItemIds = new Set<number>();
-    for (const r of gw2Recipes) {
-      allItemIds.add(r.output_item_id);
-      for (const ing of r.ingredients) {
-        allItemIds.add(ing.item_id);
-      }
-    }
-
-    // Fetch item details (names, flags)
-    const items = new Map<number, Item>();
-    try {
-      const itemDetails = await client.getBulk<{
-        id: number;
-        name: string;
-        type?: string;
-        rarity?: string;
-        flags: string[];
-      }>('/items', [...allItemIds]);
-      for (const detail of itemDetails) {
-        items.set(detail.id, {
-          id: detail.id,
-          name: detail.name,
-          type: detail.type,
-          rarity: detail.rarity,
-          flags: detail.flags,
-        });
-      }
-    } catch (err) {
-      logger.warn('Failed to fetch item details', {
-        userId: user.id,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
 
     // Parse exclusion list
     let exclusions: number[] = [];
@@ -238,23 +233,25 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
     pricesMissing = priceItemIds.size - prices.size;
 
-    // Evaluate all known recipes
+    // Evaluate all cached recipes
     let craftableWithDiscipline = 0;
     let craftableWithMaterials = 0;
     const results: ProfitEntry[] = [];
 
-    for (const r of gw2Recipes) {
-      if (exclusionSet.has(r.output_item_id)) continue;
+    for (const recipe of recipes.values()) {
+      if (exclusionSet.has(recipe.outputItemId)) continue;
 
       // User must have at least one matching discipline at sufficient level
+      const disciplines = recipe.disciplines ?? [];
+      const minRating = recipe.minRating ?? 0;
       const hasDiscipline =
-        r.disciplines.length === 0 ||
-        r.disciplines.some((d) => (disciplineMap.get(d) ?? 0) >= r.min_rating);
+        disciplines.length === 0 ||
+        disciplines.some((d) => (disciplineMap.get(d) ?? 0) >= minRating);
       if (!hasDiscipline) continue;
 
       craftableWithDiscipline++;
 
-      const tree = getTree(r.output_item_id);
+      const tree = getTree(recipe.outputItemId);
       if (!tree.craftable) continue;
 
       const qty = maxCraftableFromInventory(tree, available);
@@ -265,11 +262,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const effectiveQty = tree.dailyCap != null ? Math.min(qty, tree.dailyCap) : qty;
       if (effectiveQty <= 0) continue;
 
-      const outputItem = items.get(r.output_item_id);
+      const outputItem = items.get(recipe.outputItemId);
       const isAccountBound =
         outputItem?.flags.includes('AccountBound') || outputItem?.flags.includes('SoulBound');
 
-      const sellPrice = prices.get(r.output_item_id)?.sellPrice ?? 0;
+      const sellPrice = prices.get(recipe.outputItemId)?.sellPrice ?? 0;
       const noTpListing = sellPrice <= 0;
 
       let materialValue = 0;
@@ -280,11 +277,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         materialValue += leafBuyPrice * countPerUnit;
       }
 
-      const itemName = outputItem?.name ?? `Item ${r.output_item_id}`;
+      const itemName = outputItem?.name ?? `Item ${recipe.outputItemId}`;
 
       if (noTpListing || isAccountBound) {
         results.push({
-          itemId: r.output_item_id,
+          itemId: recipe.outputItemId,
           itemName,
           sellPrice: 0,
           craftingCost: materialValue,
@@ -297,8 +294,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           dailyCap: tree.dailyCap,
           noTpListing,
           accountBound: isAccountBound ?? false,
-          disciplineRequired: r.disciplines[0],
-          levelRequired: r.min_rating,
+          disciplineRequired: disciplines[0],
+          levelRequired: minRating,
         });
         continue;
       }
@@ -312,7 +309,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const roi = materialValue > 0 ? (profitPerUnit / materialValue) * 100 : 0;
 
       results.push({
-        itemId: r.output_item_id,
+        itemId: recipe.outputItemId,
         itemName,
         sellPrice,
         craftingCost: materialValue,
@@ -323,8 +320,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         totalProfit,
         roi: Math.round(roi * 100) / 100,
         dailyCap: tree.dailyCap,
-        disciplineRequired: r.disciplines[0],
-        levelRequired: r.min_rating,
+        disciplineRequired: disciplines[0],
+        levelRequired: minRating,
       });
     }
 
@@ -353,10 +350,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       items: results,
       inventorySize: inventory.size,
       goalsCount: goals.length,
-      knownRecipes: knownRecipeIds.length,
+      knownRecipes: accountData.knownRecipeIds.length,
       craftableWithDiscipline,
       craftableWithMaterials,
       lastUpdated: new Date().toISOString(),
+      cacheAge,
       priceWarning,
     });
   } catch (err) {

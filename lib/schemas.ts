@@ -49,6 +49,50 @@ export const SkinCacheEntitySchema = z.object({
 export type SkinCacheEntity = z.infer<typeof SkinCacheEntitySchema>;
 
 // ---------------------------------------------------------------------------
+// Recipe + Item cache entities (shared, populated during account init)
+// ---------------------------------------------------------------------------
+
+export const RecipeCacheEntitySchema = z.object({
+  outputItemId: z.number().int().positive(),
+  outputItemCount: z.number().int().positive(),
+  minRating: z.number().int().nonnegative(),
+  disciplines: z.string(), // JSON array
+  ingredients: z.string(), // JSON array of {itemId, count}
+  cachedAt: z.string().datetime(),
+});
+export type RecipeCacheEntity = z.infer<typeof RecipeCacheEntitySchema>;
+
+export const ItemCacheEntitySchema = z.object({
+  name: z.string(),
+  type: z.string().optional(),
+  rarity: z.string().optional(),
+  flags: z.string(), // JSON array
+  cachedAt: z.string().datetime(),
+});
+export type ItemCacheEntity = z.infer<typeof ItemCacheEntitySchema>;
+
+// ---------------------------------------------------------------------------
+// Per-user account data cache (populated during account init)
+// ---------------------------------------------------------------------------
+
+export const AccountDataSchema = z.object({
+  knownRecipeIds: z.array(z.number().int()),
+  characters: z.array(
+    z.object({
+      name: z.string(),
+      disciplines: z.array(
+        z.object({
+          discipline: z.string(),
+          rating: z.number().int().nonnegative(),
+        })
+      ),
+    })
+  ),
+  cachedAt: z.string().datetime(),
+});
+export type AccountData = z.infer<typeof AccountDataSchema>;
+
+// ---------------------------------------------------------------------------
 // Goal progress
 // ---------------------------------------------------------------------------
 

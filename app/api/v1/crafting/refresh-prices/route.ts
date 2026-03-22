@@ -3,8 +3,18 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireUser, isUser } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { getGoals, getSetting, putCachedPrices } from '@/lib/tableStorage';
-import { GoalProgressSchema } from '@/lib/schemas';
+import {
+  getGoals,
+  getSetting,
+  putCachedPrices,
+  getCachedRecipes,
+  getCachedItems,
+  putCachedRecipes,
+  putCachedItems,
+  putSetting,
+} from '@/lib/tableStorage';
+import { GoalProgressSchema, AccountDataSchema } from '@/lib/schemas';
+import type { AccountData } from '@/lib/schemas';
 import { buildRecipeTree } from '@/lib/recipeTree';
 import type { Recipe, Item, RecipeNode } from '@/lib/recipeTree';
 import { Gw2Client } from '@/lib/gw2Client';
@@ -47,24 +57,81 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
       .filter((g): g is NonNullable<typeof g> => g !== null);
 
-    // Fetch known recipes from GW2 API
+    // --- Incremental recipe update: diff against cached account data ---
     let knownRecipeIds: number[] = [];
+    let newRecipesCached = 0;
+    let newItemsCached = 0;
+
     try {
       knownRecipeIds = await client.get<number[]>('/account/recipes');
     } catch {
-      logger.warn('Could not fetch /account/recipes, using goals only', {
+      logger.warn('Could not fetch /account/recipes, using cached data', {
         userId: user.id,
       });
+      // Fall back to cached account data
+      const accountDataRaw = await getSetting(user.id, 'accountData');
+      if (accountDataRaw) {
+        const parsed = AccountDataSchema.safeParse(JSON.parse(accountDataRaw));
+        if (parsed.success) knownRecipeIds = parsed.data.knownRecipeIds;
+      }
     }
 
-    // Batch fetch recipe details
-    const gw2Recipes =
-      knownRecipeIds.length > 0 ? await client.getBulk<GW2Recipe>('/recipes', knownRecipeIds) : [];
+    // Check which recipes are already cached
+    const recipeIdStrs = knownRecipeIds.map(String);
+    const existingRecipes = await getCachedRecipes(recipeIdStrs);
+    const missingRecipeIds = knownRecipeIds.filter((id) => !existingRecipes.has(String(id)));
 
-    // Build recipes map
+    // Fetch only NEW recipe details
+    let freshRecipes: GW2Recipe[] = [];
+    if (missingRecipeIds.length > 0) {
+      freshRecipes = await client.getBulk<GW2Recipe>('/recipes', missingRecipeIds);
+      const now = new Date().toISOString();
+      await putCachedRecipes(
+        freshRecipes.map((r) => ({
+          recipeId: String(r.id),
+          outputItemId: r.output_item_id,
+          outputItemCount: r.output_item_count,
+          minRating: r.min_rating,
+          disciplines: JSON.stringify(r.disciplines),
+          ingredients: JSON.stringify(
+            r.ingredients.map((ing) => ({ itemId: ing.item_id, count: ing.count }))
+          ),
+          cachedAt: now,
+        }))
+      );
+      newRecipesCached = freshRecipes.length;
+    }
+
+    // Update accountData with current recipe list
+    if (knownRecipeIds.length > 0) {
+      const accountDataRaw = await getSetting(user.id, 'accountData');
+      if (accountDataRaw) {
+        const parsed = AccountDataSchema.safeParse(JSON.parse(accountDataRaw));
+        if (parsed.success) {
+          const updated: AccountData = {
+            ...parsed.data,
+            knownRecipeIds,
+            cachedAt: new Date().toISOString(),
+          };
+          await putSetting(user.id, 'accountData', JSON.stringify(updated));
+        }
+      }
+    }
+
+    // Build recipes map from cache + fresh data
     const recipes = new Map<number, Recipe>();
     const items = new Map<number, Item>();
-    for (const r of gw2Recipes) {
+    for (const [, cached] of existingRecipes) {
+      const ings = JSON.parse(cached.ingredients) as Array<{ itemId: number; count: number }>;
+      recipes.set(cached.outputItemId, {
+        outputItemId: cached.outputItemId,
+        outputItemCount: cached.outputItemCount,
+        disciplines: JSON.parse(cached.disciplines) as string[],
+        minRating: cached.minRating,
+        ingredients: ings,
+      });
+    }
+    for (const r of freshRecipes) {
       recipes.set(r.output_item_id, {
         outputItemId: r.output_item_id,
         outputItemCount: r.output_item_count,
@@ -84,25 +151,49 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Collect all item IDs needing prices
     const allItemIds = new Set<number>();
-
     for (const goal of goals) {
       const tree = buildRecipeTree(goal.itemId, recipes, items);
       collectAllItemIds(tree, allItemIds);
     }
-
-    for (const r of gw2Recipes) {
-      allItemIds.add(r.output_item_id);
-      for (const ing of r.ingredients) {
-        allItemIds.add(ing.item_id);
-      }
+    for (const [, recipe] of recipes) {
+      allItemIds.add(recipe.outputItemId);
+      for (const ing of recipe.ingredients) allItemIds.add(ing.itemId);
     }
 
-    const itemIds = [...allItemIds];
+    // Cache any missing items
+    const itemIdStrs = [...allItemIds].map(String);
+    const existingItems = await getCachedItems(itemIdStrs);
+    const missingItemIds = [...allItemIds].filter((id) => !existingItems.has(String(id)));
+    if (missingItemIds.length > 0) {
+      const itemDetails = await client.getBulk<{
+        id: number;
+        name: string;
+        type?: string;
+        rarity?: string;
+        flags: string[];
+      }>('/items', missingItemIds);
+      const now = new Date().toISOString();
+      await putCachedItems(
+        itemDetails.map((item) => ({
+          itemId: String(item.id),
+          name: item.name,
+          type: item.type,
+          rarity: item.rarity,
+          flags: JSON.stringify(item.flags),
+          cachedAt: now,
+        }))
+      );
+      newItemsCached = itemDetails.length;
+    }
+
+    const priceItemIds = [...allItemIds];
 
     logger.info('Refreshing prices', {
       userId: user.id,
       knownRecipes: knownRecipeIds.length,
-      itemsToPrice: itemIds.length,
+      newRecipesCached,
+      newItemsCached,
+      itemsToPrice: priceItemIds.length,
     });
 
     // Fetch TP prices
@@ -113,16 +204,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     let priceData: GW2Price[] = [];
-    if (itemIds.length > 0) {
+    if (priceItemIds.length > 0) {
       try {
-        priceData = await client.getBulk<GW2Price>('/commerce/prices', itemIds);
+        priceData = await client.getBulk<GW2Price>('/commerce/prices', priceItemIds);
       } catch {
-        // Some items may not be tradeable — fetch in smaller batches
-        for (let i = 0; i < itemIds.length; i += 200) {
+        for (let i = 0; i < priceItemIds.length; i += 200) {
           try {
             const batch = await client.getBulk<GW2Price>(
               '/commerce/prices',
-              itemIds.slice(i, i + 200)
+              priceItemIds.slice(i, i + 200)
             );
             priceData.push(...batch);
           } catch {
@@ -147,6 +237,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       refreshed: priceEntries.length,
       knownRecipes: knownRecipeIds.length,
+      newRecipesCached,
+      newItemsCached,
       cachedAt,
     });
   } catch (err) {

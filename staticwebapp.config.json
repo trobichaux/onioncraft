@@ -21,6 +21,10 @@
       "allowedRoles": ["authenticated"]
     },
     {
+      "route": "/api/v1/account/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
       "route": "/.auth/login/twitter",
       "statusCode": 404
     },

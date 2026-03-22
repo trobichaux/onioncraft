@@ -1,5 +1,5 @@
 import { TableClient, RestError, TransactionAction, odata } from '@azure/data-tables';
-import type { PriceCacheEntity, SkinCacheEntity } from './schemas';
+import type { PriceCacheEntity, SkinCacheEntity, RecipeCacheEntity, ItemCacheEntity } from './schemas';
 
 // ---------------------------------------------------------------------------
 // Connection & client helpers
@@ -22,6 +22,8 @@ const TABLE_NAMES = [
   'GoalProgress',
   'SkinCache',
   'ShoppingList',
+  'RecipeCache',
+  'ItemCache',
 ] as const;
 export type TableName = (typeof TABLE_NAMES)[number];
 
@@ -70,7 +72,8 @@ export type SettingKey =
   | 'apiKey'
   | 'characterFilter'
   | 'ownedSkinIds'
-  | 'collectionMeta';
+  | 'collectionMeta'
+  | 'accountData';
 
 const MAX_VALUE_BYTES = 64 * 1024; // 64 KB
 
@@ -428,5 +431,140 @@ export async function clearShoppingList(userId: string): Promise<void> {
   });
   for await (const entity of entities) {
     await client.deleteEntity(userId, entity.rowKey as string);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RecipeCache (shared — recipe details from GW2 API)
+// ---------------------------------------------------------------------------
+
+/**
+ * Batch-get cached recipe details.
+ * Missing recipes are omitted from the returned Map.
+ */
+export async function getCachedRecipes(
+  recipeIds: string[]
+): Promise<Map<string, RecipeCacheEntity>> {
+  const client = await getTableClient('RecipeCache');
+  const result = new Map<string, RecipeCacheEntity>();
+
+  for (const recipeId of recipeIds) {
+    try {
+      const entity = await client.getEntity<{
+        outputItemId: number;
+        outputItemCount: number;
+        minRating: number;
+        disciplines: string;
+        ingredients: string;
+        cachedAt: string;
+      }>('shared', recipeId);
+      result.set(recipeId, {
+        outputItemId: entity.outputItemId,
+        outputItemCount: entity.outputItemCount,
+        minRating: entity.minRating,
+        disciplines: entity.disciplines,
+        ingredients: entity.ingredients,
+        cachedAt: entity.cachedAt,
+      });
+    } catch (err) {
+      if (err instanceof RestError && err.statusCode === 404) continue;
+      throw err;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Batch-upsert cached recipes.
+ * Chunks into transactions of ≤100 (Azure Table Storage limit).
+ */
+export async function putCachedRecipes(
+  recipes: Array<{ recipeId: string } & RecipeCacheEntity>
+): Promise<void> {
+  const client = await getTableClient('RecipeCache');
+  const batches = chunk(recipes, 100);
+
+  for (const batch of batches) {
+    const actions: TransactionAction[] = batch.map((r) => [
+      'upsert',
+      {
+        partitionKey: 'shared',
+        rowKey: r.recipeId,
+        outputItemId: r.outputItemId,
+        outputItemCount: r.outputItemCount,
+        minRating: r.minRating,
+        disciplines: r.disciplines,
+        ingredients: r.ingredients,
+        cachedAt: r.cachedAt,
+      },
+      'Replace',
+    ]);
+    await client.submitTransaction(actions);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ItemCache (shared — item details from GW2 API)
+// ---------------------------------------------------------------------------
+
+/**
+ * Batch-get cached item details.
+ * Missing items are omitted from the returned Map.
+ */
+export async function getCachedItems(itemIds: string[]): Promise<Map<string, ItemCacheEntity>> {
+  const client = await getTableClient('ItemCache');
+  const result = new Map<string, ItemCacheEntity>();
+
+  for (const itemId of itemIds) {
+    try {
+      const entity = await client.getEntity<{
+        name: string;
+        type?: string;
+        rarity?: string;
+        flags: string;
+        cachedAt: string;
+      }>('shared', itemId);
+      result.set(itemId, {
+        name: entity.name,
+        type: entity.type,
+        rarity: entity.rarity,
+        flags: entity.flags,
+        cachedAt: entity.cachedAt,
+      });
+    } catch (err) {
+      if (err instanceof RestError && err.statusCode === 404) continue;
+      throw err;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Batch-upsert cached items.
+ * Chunks into transactions of ≤100 (Azure Table Storage limit).
+ */
+export async function putCachedItems(
+  items: Array<{ itemId: string } & ItemCacheEntity>
+): Promise<void> {
+  const client = await getTableClient('ItemCache');
+  const batches = chunk(items, 100);
+
+  for (const batch of batches) {
+    const actions: TransactionAction[] = batch.map((i) => [
+      'upsert',
+      {
+        partitionKey: 'shared',
+        rowKey: i.itemId,
+        name: i.name,
+        type: i.type ?? '',
+        rarity: i.rarity ?? '',
+        flags: i.flags,
+        cachedAt: i.cachedAt,
+      },
+      'Replace',
+    ]);
+    await client.submitTransaction(actions);
   }
 }

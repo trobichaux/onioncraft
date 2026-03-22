@@ -51,7 +51,11 @@ describe('GET /api/v1/skins/collection', () => {
   it('returns needsRefresh when no persisted data exists', async () => {
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
       if (key === 'apiKey') {
-        return JSON.stringify({ key: 'TEST-KEY', permissions: [], validatedAt: '2024-01-01T00:00:00.000Z' });
+        return JSON.stringify({
+          key: 'TEST-KEY',
+          permissions: [],
+          validatedAt: '2024-01-01T00:00:00.000Z',
+        });
       }
       return null;
     });
@@ -72,7 +76,11 @@ describe('GET /api/v1/skins/collection', () => {
 
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
       if (key === 'apiKey') {
-        return JSON.stringify({ key: 'TEST-KEY', permissions: [], validatedAt: '2024-01-01T00:00:00.000Z' });
+        return JSON.stringify({
+          key: 'TEST-KEY',
+          permissions: [],
+          validatedAt: '2024-01-01T00:00:00.000Z',
+        });
       }
       if (key === 'collectionMeta') {
         return JSON.stringify(meta);
@@ -93,7 +101,11 @@ describe('GET /api/v1/skins/collection', () => {
   it('returns needsRefresh when persisted metadata is invalid', async () => {
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
       if (key === 'apiKey') {
-        return JSON.stringify({ key: 'TEST-KEY', permissions: [], validatedAt: '2024-01-01T00:00:00.000Z' });
+        return JSON.stringify({
+          key: 'TEST-KEY',
+          permissions: [],
+          validatedAt: '2024-01-01T00:00:00.000Z',
+        });
       }
       if (key === 'collectionMeta') {
         return JSON.stringify({ garbage: true });

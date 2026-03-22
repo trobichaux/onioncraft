@@ -81,11 +81,7 @@ describe('PUT /api/v1/settings/priority-rules', () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual({ success: true });
-    expect(mockPutSetting).toHaveBeenCalledWith(
-      'default',
-      'priorityRules',
-      JSON.stringify(rules),
-    );
+    expect(mockPutSetting).toHaveBeenCalledWith('default', 'priorityRules', JSON.stringify(rules));
   });
 
   it('accepts an empty array', async () => {

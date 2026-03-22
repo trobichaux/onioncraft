@@ -76,7 +76,7 @@ describe('PUT /api/v1/settings/exclusion-list', () => {
     expect(mockPutSetting).toHaveBeenCalledWith(
       'default',
       'exclusionList',
-      JSON.stringify([1, 2, 3]),
+      JSON.stringify([1, 2, 3])
     );
   });
 

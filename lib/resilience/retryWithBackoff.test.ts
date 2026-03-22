@@ -35,22 +35,18 @@ describe('retryWithBackoff', () => {
   });
 
   it('does NOT retry on non-retryable status (400)', async () => {
-    const fn = jest
-      .fn()
-      .mockRejectedValue(new Gw2ApiError(400, 'Bad Request', '/items'));
+    const fn = jest.fn().mockRejectedValue(new Gw2ApiError(400, 'Bad Request', '/items'));
 
     await expect(retryWithBackoff(fn, { delayFn: noDelay })).rejects.toThrow('Bad Request');
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
   it('exhausts max retries and throws last error', async () => {
-    const fn = jest
-      .fn()
-      .mockRejectedValue(new Gw2ApiError(429, 'Rate limited', '/items'));
+    const fn = jest.fn().mockRejectedValue(new Gw2ApiError(429, 'Rate limited', '/items'));
 
-    await expect(
-      retryWithBackoff(fn, { maxRetries: 2, delayFn: noDelay }),
-    ).rejects.toThrow('Rate limited');
+    await expect(retryWithBackoff(fn, { maxRetries: 2, delayFn: noDelay })).rejects.toThrow(
+      'Rate limited'
+    );
     expect(fn).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
   });
 

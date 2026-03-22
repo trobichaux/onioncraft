@@ -100,7 +100,11 @@ export default function ApiKeyForm() {
         <h3>Required Permissions</h3>
         <p className="permissions-help">
           Create an API key at{' '}
-          <a href="https://account.arena.net/applications" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://account.arena.net/applications"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             account.arena.net/applications
           </a>{' '}
           with these permissions enabled:
@@ -128,9 +132,7 @@ export default function ApiKeyForm() {
             <span className="status-badge status-configured">✓ Configured</span>
           </p>
           {status.validatedAt && (
-            <p className="key-meta">
-              Validated: {new Date(status.validatedAt).toLocaleString()}
-            </p>
+            <p className="key-meta">Validated: {new Date(status.validatedAt).toLocaleString()}</p>
           )}
           <button type="button" className="btn-danger" onClick={handleDelete} disabled={loading}>
             Remove API Key

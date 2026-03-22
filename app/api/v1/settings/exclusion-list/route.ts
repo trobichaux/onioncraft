@@ -21,7 +21,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
             'X-RateLimit-Remaining': String(rateLimit.remaining),
           },
-        },
+        }
       );
     }
 
@@ -38,10 +38,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to load exclusion list' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to load exclusion list' }, { status: 500 });
   }
 }
 
@@ -58,11 +55,11 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
             'X-RateLimit-Remaining': String(rateLimit.remaining),
           },
-        },
+        }
       );
     }
 
-    const parsed= await validateRequestBody(req, ExclusionListSchema);
+    const parsed = await validateRequestBody(req, ExclusionListSchema);
     if ('error' in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
@@ -74,9 +71,6 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to save exclusion list' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to save exclusion list' }, { status: 500 });
   }
 }

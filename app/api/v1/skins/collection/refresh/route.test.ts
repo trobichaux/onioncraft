@@ -37,9 +37,7 @@ jest.mock('@/lib/gw2Client', () => ({
 
 jest.mock('@/data/skin-sources.json', () => ({
   lastVerified: '2026-03-22',
-  skins: [
-    { skinId: 3, method: 'gem_store', notes: 'Test gem store skin' },
-  ],
+  skins: [{ skinId: 3, method: 'gem_store', notes: 'Test gem store skin' }],
 }));
 
 // ---------------------------------------------------------------------------
@@ -74,7 +72,11 @@ describe('POST /api/v1/skins/collection/refresh', () => {
   it('performs full refresh and persists owned IDs + metadata', async () => {
     mockGetSetting.mockImplementation((_userId: string, key: string) => {
       if (key === 'apiKey') {
-        return JSON.stringify({ key: 'TEST-KEY', permissions: [], validatedAt: '2024-01-01T00:00:00.000Z' });
+        return JSON.stringify({
+          key: 'TEST-KEY',
+          permissions: [],
+          validatedAt: '2024-01-01T00:00:00.000Z',
+        });
       }
       return null;
     });
@@ -90,8 +92,16 @@ describe('POST /api/v1/skins/collection/refresh', () => {
     // Skin cache: skin 2 is cached, skin 3 is not
     mockGetCachedSkins.mockResolvedValue(
       new Map([
-        ['2', { name: 'Beta', type: 'Weapon', icon: 'https://img/2.png', cachedAt: '2024-01-01T00:00:00.000Z' }],
-      ]),
+        [
+          '2',
+          {
+            name: 'Beta',
+            type: 'Weapon',
+            icon: 'https://img/2.png',
+            cachedAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      ])
     );
 
     mockGw2GetBulk.mockResolvedValue([
@@ -110,15 +120,11 @@ describe('POST /api/v1/skins/collection/refresh', () => {
     expect(json.lastRefreshed).toBeDefined();
 
     // Verify owned IDs were persisted
-    expect(mockPutSetting).toHaveBeenCalledWith(
-      'default',
-      'ownedSkinIds',
-      JSON.stringify([1]),
-    );
+    expect(mockPutSetting).toHaveBeenCalledWith('default', 'ownedSkinIds', JSON.stringify([1]));
 
     // Verify collection metadata was persisted
     const metaCall = mockPutSetting.mock.calls.find(
-      (call: unknown[]) => call[1] === 'collectionMeta',
+      (call: unknown[]) => call[1] === 'collectionMeta'
     );
     expect(metaCall).toBeDefined();
     const meta = JSON.parse(metaCall![2] as string);
@@ -145,9 +151,25 @@ describe('POST /api/v1/skins/collection/refresh', () => {
 
     mockGetCachedSkins.mockResolvedValue(
       new Map([
-        ['1', { name: 'Alpha', type: 'Armor', icon: 'https://img/1.png', cachedAt: '2024-01-01T00:00:00.000Z' }],
-        ['2', { name: 'Beta', type: 'Back', icon: 'https://img/2.png', cachedAt: '2024-01-01T00:00:00.000Z' }],
-      ]),
+        [
+          '1',
+          {
+            name: 'Alpha',
+            type: 'Armor',
+            icon: 'https://img/1.png',
+            cachedAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+        [
+          '2',
+          {
+            name: 'Beta',
+            type: 'Back',
+            icon: 'https://img/2.png',
+            cachedAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      ])
     );
 
     mockGw2GetBulk.mockResolvedValue([]);

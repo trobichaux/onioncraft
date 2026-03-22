@@ -21,10 +21,10 @@ export interface ProfitResult {
 
 export function calculateProfit(
   sellPrice: number,
-  craftingCost: number,
+  craftingCost: number
 ): { listingFee: number; exchangeFee: number; profit: number } {
   const listingFee = Math.ceil(sellPrice * 0.05);
-  const exchangeFee = Math.ceil(sellPrice * 0.10);
+  const exchangeFee = Math.ceil(sellPrice * 0.1);
   const profit = sellPrice - listingFee - exchangeFee - craftingCost;
   return { listingFee, exchangeFee, profit };
 }
@@ -36,7 +36,7 @@ export function calculateProfit(
 export function computeCraftingCost(
   tree: RecipeNode,
   prices: Map<number, { buyPrice: number; sellPrice: number }>,
-  inventory: Map<number, number>,
+  inventory: Map<number, number>
 ): number {
   return computeNodeCost(tree, prices, inventory);
 }
@@ -44,7 +44,7 @@ export function computeCraftingCost(
 function computeNodeCost(
   node: RecipeNode,
   prices: Map<number, { buyPrice: number; sellPrice: number }>,
-  inventory: Map<number, number>,
+  inventory: Map<number, number>
 ): number {
   if (node.ingredients.length === 0) {
     // Leaf node — buy from TP or farm
@@ -76,7 +76,7 @@ function computeNodeCost(
 export function buildProfitResult(
   tree: RecipeNode,
   prices: Map<number, { buyPrice: number; sellPrice: number }>,
-  inventory: Map<number, number>,
+  inventory: Map<number, number>
 ): ProfitResult {
   const price = prices.get(tree.itemId);
   const sellPrice = price?.sellPrice ?? 0;

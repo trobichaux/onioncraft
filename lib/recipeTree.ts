@@ -85,7 +85,7 @@ export function buildRecipeTree(
   goalItemId: number,
   recipes: Map<number, Recipe>,
   items: Map<number, Item>,
-  count: number = 1,
+  count: number = 1
 ): RecipeNode {
   const mysticRecipes = getMysticForgeRecipes();
   const craftLimits = getCraftLimits();
@@ -100,7 +100,7 @@ function buildNode(
   mysticRecipes: Map<number, Recipe>,
   items: Map<number, Item>,
   craftLimits: Map<number, CraftLimit>,
-  visited: Set<number>,
+  visited: Set<number>
 ): RecipeNode {
   const item = items.get(itemId);
   const itemName = item?.name ?? `Item ${itemId}`;
@@ -141,8 +141,8 @@ function buildNode(
       mysticRecipes,
       items,
       craftLimits,
-      newVisited,
-    ),
+      newVisited
+    )
   );
 
   return {
@@ -164,7 +164,7 @@ function buildNode(
 
 export function calculateOverages(
   trees: RecipeNode[],
-  inventory: Map<number, number>,
+  inventory: Map<number, number>
 ): Map<number, number> {
   // Flatten all trees and sum total required per leaf item
   const totalRequired = new Map<number, number>();
@@ -185,10 +185,7 @@ export function calculateOverages(
   return overages;
 }
 
-function flattenLeafRequirements(
-  node: RecipeNode,
-  totals: Map<number, number>,
-): void {
+function flattenLeafRequirements(node: RecipeNode, totals: Map<number, number>): void {
   if (node.ingredients.length === 0) {
     // Leaf node — accumulate requirement
     const current = totals.get(node.itemId) ?? 0;
@@ -212,7 +209,7 @@ function flattenLeafRequirements(
  */
 export function maxCraftableFromInventory(
   tree: RecipeNode,
-  available: Map<number, number>,
+  available: Map<number, number>
 ): number {
   if (!tree.craftable) return 0;
 

@@ -57,9 +57,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to check for collection changes' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to check for collection changes' }, { status: 500 });
   }
 }

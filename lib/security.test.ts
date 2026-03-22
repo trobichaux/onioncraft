@@ -2,9 +2,7 @@ import { sanitizeString, validatePartitionKey, maskApiKey } from '@/lib/security
 
 describe('sanitizeString', () => {
   it('strips HTML tags', () => {
-    expect(sanitizeString('<script>alert("xss")</script>Hello')).toBe(
-      'alert("xss")Hello',
-    );
+    expect(sanitizeString('<script>alert("xss")</script>Hello')).toBe('alert("xss")Hello');
   });
 
   it('strips nested HTML tags', () => {

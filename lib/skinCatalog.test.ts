@@ -1,8 +1,4 @@
-import {
-  categorizeAcquisition,
-  computeUnownedSkins,
-  applyPriorityRules,
-} from './skinCatalog';
+import { categorizeAcquisition, computeUnownedSkins, applyPriorityRules } from './skinCatalog';
 import type { SkinEntry } from './skinCatalog';
 
 // ---------------------------------------------------------------------------
@@ -14,50 +10,36 @@ describe('categorizeAcquisition', () => {
   const emptyMap = new Map<number, { method: string; notes?: string }>();
 
   it('returns trading_post when skin has a TP listing', () => {
-    expect(
-      categorizeAcquisition(1, true, empty, empty, emptyMap),
-    ).toBe('trading_post');
+    expect(categorizeAcquisition(1, true, empty, empty, emptyMap)).toBe('trading_post');
   });
 
   it('returns achievement when skin is an achievement reward', () => {
     const achievements = new Set([42]);
-    expect(
-      categorizeAcquisition(42, false, achievements, empty, emptyMap),
-    ).toBe('achievement');
+    expect(categorizeAcquisition(42, false, achievements, empty, emptyMap)).toBe('achievement');
   });
 
   it('returns direct_buy when skin is sold by a vendor', () => {
     const vendors = new Set([99]);
-    expect(
-      categorizeAcquisition(99, false, empty, vendors, emptyMap),
-    ).toBe('direct_buy');
+    expect(categorizeAcquisition(99, false, empty, vendors, emptyMap)).toBe('direct_buy');
   });
 
   it('returns gem_store when skin source method is gem_store', () => {
     const sources = new Map([[10, { method: 'gem_store', notes: 'Exclusive' }]]);
-    expect(
-      categorizeAcquisition(10, false, empty, empty, sources),
-    ).toBe('gem_store');
+    expect(categorizeAcquisition(10, false, empty, empty, sources)).toBe('gem_store');
   });
 
   it('returns content_drop when skin source method is content_drop', () => {
     const sources = new Map([[20, { method: 'content_drop' }]]);
-    expect(
-      categorizeAcquisition(20, false, empty, empty, sources),
-    ).toBe('content_drop');
+    expect(categorizeAcquisition(20, false, empty, empty, sources)).toBe('content_drop');
   });
 
   it('returns unknown when no match is found', () => {
-    expect(
-      categorizeAcquisition(999, false, empty, empty, emptyMap),
-    ).toBe('unknown');
+    expect(categorizeAcquisition(999, false, empty, empty, emptyMap)).toBe('unknown');
   });
 
   it('prioritizes trading_post over achievement', () => {
     const achievements = new Set([5]);
-    expect(
-      categorizeAcquisition(5, true, achievements, empty, emptyMap),
-    ).toBe('trading_post');
+    expect(categorizeAcquisition(5, true, achievements, empty, emptyMap)).toBe('trading_post');
   });
 });
 
@@ -84,65 +66,33 @@ describe('computeUnownedSkins', () => {
       emptyPrices,
       empty,
       empty,
-      emptyMap,
+      emptyMap
     );
     expect(result.map((s) => s.skinId)).toEqual([2, 3]);
   });
 
   it('generates wiki URLs from skin name', () => {
-    const result = computeUnownedSkins(
-      [1, 2],
-      [],
-      details,
-      emptyPrices,
-      empty,
-      empty,
-      emptyMap,
-    );
+    const result = computeUnownedSkins([1, 2], [], details, emptyPrices, empty, empty, emptyMap);
     expect(result[0].wikiUrl).toBe('https://wiki.guildwars2.com/wiki/Alpha_Skin');
     expect(result[1].wikiUrl).toBe('https://wiki.guildwars2.com/wiki/Beta_Skin');
   });
 
   it('includes TP price when available', () => {
     const prices = new Map([[2, 12345]]);
-    const result = computeUnownedSkins(
-      [2],
-      [],
-      details,
-      prices,
-      empty,
-      empty,
-      emptyMap,
-    );
+    const result = computeUnownedSkins([2], [], details, prices, empty, empty, emptyMap);
     expect(result[0].tpPrice).toBe(12345);
     expect(result[0].method).toBe('trading_post');
   });
 
   it('skips skins with no cached details', () => {
-    const result = computeUnownedSkins(
-      [1, 999],
-      [],
-      details,
-      emptyPrices,
-      empty,
-      empty,
-      emptyMap,
-    );
+    const result = computeUnownedSkins([1, 999], [], details, emptyPrices, empty, empty, emptyMap);
     expect(result).toHaveLength(1);
     expect(result[0].skinId).toBe(1);
   });
 
   it('includes notes from skin sources', () => {
     const sources = new Map([[1, { method: 'gem_store', notes: 'Outfit only' }]]);
-    const result = computeUnownedSkins(
-      [1],
-      [],
-      details,
-      emptyPrices,
-      empty,
-      empty,
-      sources,
-    );
+    const result = computeUnownedSkins([1], [], details, emptyPrices, empty, empty, sources);
     expect(result[0].notes).toBe('Outfit only');
   });
 });

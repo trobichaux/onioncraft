@@ -20,14 +20,19 @@ export function formatCoins(copper: number): React.ReactElement {
   const parts: React.ReactElement[] = [];
 
   if (negative) {
-    parts.push(<span key="neg" className="coin-negative">−</span>);
+    parts.push(
+      <span key="neg" className="coin-negative">
+        −
+      </span>
+    );
   }
 
   if (gold > 0) {
     parts.push(
       <span key="g" className="coin coin-gold">
-        {gold}<span className="coin-icon">g</span>
-      </span>,
+        {gold}
+        <span className="coin-icon">g</span>
+      </span>
     );
   }
 
@@ -36,15 +41,15 @@ export function formatCoins(copper: number): React.ReactElement {
       <span key="s" className="coin coin-silver">
         {gold > 0 ? String(silver).padStart(2, '0') : silver}
         <span className="coin-icon">s</span>
-      </span>,
+      </span>
     );
   }
 
   parts.push(
     <span key="c" className="coin coin-copper">
-      {(gold > 0 || silver > 0) ? String(cop).padStart(2, '0') : cop}
+      {gold > 0 || silver > 0 ? String(cop).padStart(2, '0') : cop}
       <span className="coin-icon">c</span>
-    </span>,
+    </span>
   );
 
   return <span className="coins">{parts}</span>;
@@ -68,7 +73,7 @@ export function formatCoinsText(copper: number): string {
   if (silver > 0 || gold > 0) {
     parts.push(`${gold > 0 ? String(silver).padStart(2, '0') : silver}s`);
   }
-  parts.push(`${(gold > 0 || silver > 0) ? String(cop).padStart(2, '0') : cop}c`);
+  parts.push(`${gold > 0 || silver > 0 ? String(cop).padStart(2, '0') : cop}c`);
 
   return prefix + parts.join(' ');
 }

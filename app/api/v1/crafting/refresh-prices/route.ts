@@ -45,7 +45,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // Register candidate items
-    const candidates = (candidatesData as { candidates: Array<{ itemId: number; itemName: string }> }).candidates;
+    const candidates = (
+      candidatesData as { candidates: Array<{ itemId: number; itemName: string }> }
+    ).candidates;
     for (const c of candidates) {
       items.set(c.itemId, { id: c.itemId, name: c.itemName, flags: [] });
     }
@@ -82,7 +84,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           try {
             const batch = await client.getBulk<GW2Price>(
               '/commerce/prices',
-              itemIds.slice(i, i + 200),
+              itemIds.slice(i, i + 200)
             );
             priceData.push(...batch);
           } catch {
@@ -110,9 +112,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to refresh prices' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to refresh prices' }, { status: 500 });
   }
 }

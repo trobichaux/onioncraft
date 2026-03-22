@@ -30,11 +30,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
             'X-RateLimit-Remaining': String(rateLimit.remaining),
           },
-        },
+        }
       );
     }
 
-    const parsed= await validateRequestBody(req, PostBodySchema);
+    const parsed = await validateRequestBody(req, PostBodySchema);
     if ('error' in parsed) {
       return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const missingPermissions = REQUIRED_PERMISSIONS.filter(
-      (p) => !tokenInfo.permissions.includes(p),
+      (p) => !tokenInfo.permissions.includes(p)
     );
 
     if (missingPermissions.length > 0) {
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           error: `Missing permissions: ${missingPermissions.join(', ')}`,
           missingPermissions,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         key,
         permissions,
         validatedAt: new Date().toISOString(),
-      }),
+      })
     );
 
     return NextResponse.json({ success: true, permissions });
@@ -83,10 +83,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to save API key' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to save API key' }, { status: 500 });
   }
 }
 
@@ -103,7 +100,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
             'X-RateLimit-Remaining': String(rateLimit.remaining),
           },
-        },
+        }
       );
     }
 
@@ -114,10 +111,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to delete API key' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to delete API key' }, { status: 500 });
   }
 }
 
@@ -134,7 +128,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
             'X-RateLimit-Remaining': String(rateLimit.remaining),
           },
-        },
+        }
       );
     }
 
@@ -155,9 +149,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to load API key status' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to load API key status' }, { status: 500 });
   }
 }

@@ -7,10 +7,7 @@ import { getCachedSkins, putCachedSkins } from '@/lib/tableStorage';
 import { Gw2Client } from '@/lib/gw2Client';
 import { PriorityRulesSchema } from '@/lib/schemas';
 import type { PriorityRules } from '@/lib/schemas';
-import {
-  computeUnownedSkins,
-  applyPriorityRules,
-} from '@/lib/skinCatalog';
+import { computeUnownedSkins, applyPriorityRules } from '@/lib/skinCatalog';
 import skinSourcesData from '@/data/skin-sources.json';
 import { logger } from '@/lib/logger';
 
@@ -112,7 +109,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // 5. Build skin details map
-    const skinDetails = new Map<number, { name: string; type: string; icon: string; rarity?: string }>();
+    const skinDetails = new Map<
+      number,
+      { name: string; type: string; icon: string; rarity?: string }
+    >();
     for (const [idStr, entity] of cachedMap.entries()) {
       skinDetails.set(Number(idStr), {
         name: entity.name,
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       try {
         const prices = await client.get<Array<{ id: number; sells: { unit_price: number } }>>(
           '/commerce/prices',
-          { ids: batch.join(',') },
+          { ids: batch.join(',') }
         );
         for (const p of prices) {
           if (p.sells?.unit_price) {
@@ -161,7 +161,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       tpPrices,
       achievementSkinIds,
       vendorSkinIds,
-      skinSources,
+      skinSources
     );
 
     // 9. Apply priority rules
@@ -204,9 +204,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       error: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
-    return NextResponse.json(
-      { error: 'Failed to refresh skin collection' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to refresh skin collection' }, { status: 500 });
   }
 }

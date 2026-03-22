@@ -55,8 +55,7 @@ export default function HomePage() {
             <strong>Sign in</strong> with your GitHub account
           </li>
           <li>
-            Go to <Link href="/settings">Settings</Link> and enter your{' '}
-            <strong>GW2 API key</strong>
+            Go to <Link href="/settings">Settings</Link> and enter your <strong>GW2 API key</strong>
           </li>
           <li>
             Open the <Link href="/crafting">Crafting Calculator</Link> to find profitable crafts

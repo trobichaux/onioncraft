@@ -39,7 +39,7 @@ export function categorizeAcquisition(
   hasTpListing: boolean,
   achievementSkinIds: Set<number>,
   vendorSkinIds: Set<number>,
-  skinSources: Map<number, { method: string; notes?: string }>,
+  skinSources: Map<number, { method: string; notes?: string }>
 ): AcquisitionMethod {
   if (hasTpListing) return 'trading_post';
   if (achievementSkinIds.has(skinId)) return 'achievement';
@@ -69,7 +69,7 @@ export function computeUnownedSkins(
   tpPrices: Map<number, number>,
   achievementSkinIds: Set<number>,
   vendorSkinIds: Set<number>,
-  skinSources: Map<number, { method: string; notes?: string }>,
+  skinSources: Map<number, { method: string; notes?: string }>
 ): SkinEntry[] {
   const ownedSet = new Set(ownedSkinIds);
 
@@ -86,7 +86,7 @@ export function computeUnownedSkins(
         hasTp,
         achievementSkinIds,
         vendorSkinIds,
-        skinSources,
+        skinSources
       );
 
       const source = skinSources.get(skinId);
@@ -115,17 +115,13 @@ export function computeUnownedSkins(
  */
 export function applyPriorityRules(
   skins: SkinEntry[],
-  rules: Array<{ field: 'type' | 'rarity' | 'method'; value: string; weight: number }>,
+  rules: Array<{ field: 'type' | 'rarity' | 'method'; value: string; weight: number }>
 ): SkinEntry[] {
   const scored = skins.map((skin) => {
     let score = 0;
     for (const rule of rules) {
       const skinValue =
-        rule.field === 'type'
-          ? skin.type
-          : rule.field === 'rarity'
-            ? skin.rarity
-            : skin.method;
+        rule.field === 'type' ? skin.type : rule.field === 'rarity' ? skin.rarity : skin.method;
       if (skinValue === rule.value) {
         score += rule.weight;
       }

@@ -89,7 +89,7 @@ export class Gw2Client {
     const category = endpointCategory(endpoint);
 
     return this.circuitBreaker.execute(category, () =>
-      retryWithBackoff(() => this.rawFetch<T>(endpoint, params), this.retryOptions),
+      retryWithBackoff(() => this.rawFetch<T>(endpoint, params), this.retryOptions)
     );
   }
 
@@ -111,7 +111,7 @@ export class Gw2Client {
     for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
       const chunk = batches.slice(i, i + MAX_CONCURRENT);
       const chunkResults = await Promise.all(
-        chunk.map((batch) => this.get<T[]>(endpoint, { ids: batch.join(',') })),
+        chunk.map((batch) => this.get<T[]>(endpoint, { ids: batch.join(',') }))
       );
       for (const r of chunkResults) {
         results.push(...r);
@@ -123,10 +123,7 @@ export class Gw2Client {
 
   // ---- private helpers ----
 
-  private async rawFetch<T>(
-    endpoint: string,
-    params?: Record<string, string>,
-  ): Promise<T> {
+  private async rawFetch<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
     // Ensure baseUrl ends with / so relative endpoint resolution works
     const base = this.baseUrl.endsWith('/') ? this.baseUrl : this.baseUrl + '/';
     // Strip leading / from endpoint to keep it relative to the base path
@@ -147,11 +144,7 @@ export class Gw2Client {
 
     const response = await fetch(url.toString(), { headers });
     if (!response.ok) {
-      throw new Gw2ApiError(
-        response.status,
-        `GW2 API error: ${response.statusText}`,
-        endpoint,
-      );
+      throw new Gw2ApiError(response.status, `GW2 API error: ${response.statusText}`, endpoint);
     }
 
     return response.json() as Promise<T>;
@@ -162,7 +155,7 @@ export class Gw2ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
-    public readonly endpoint: string,
+    public readonly endpoint: string
   ) {
     super(message);
     this.name = 'Gw2ApiError';

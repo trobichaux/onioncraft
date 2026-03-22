@@ -8,7 +8,7 @@ import { validateRequestBody } from '@/lib/validation';
 import { GoalProgressSchema } from '@/lib/schemas';
 import { logger } from '@/lib/logger';
 
-const AddGoalSchema= z.object({
+const AddGoalSchema = z.object({
   itemId: z.number().int().positive(),
   itemName: z.string().min(1),
 });
@@ -37,10 +37,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to load crafting goals' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to load crafting goals' }, { status: 500 });
   }
 }
 
@@ -63,10 +60,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to add crafting goal' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to add crafting goal' }, { status: 500 });
   }
 }
 
@@ -85,9 +79,6 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to delete crafting goal' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to delete crafting goal' }, { status: 500 });
   }
 }

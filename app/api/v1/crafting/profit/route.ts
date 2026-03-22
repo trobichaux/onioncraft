@@ -42,7 +42,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     if (!apiKeyRaw) {
       return NextResponse.json(
         { error: 'API key required. Add your GW2 API key on the Settings page.' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -81,9 +81,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       items.set(goal.itemId, { id: goal.itemId, name: goal.itemName, flags: [] });
     }
 
-    const candidates = (candidatesData as {
-      candidates: Array<{ itemId: number; itemName: string; category: string }>;
-    }).candidates;
+    const candidates = (
+      candidatesData as {
+        candidates: Array<{ itemId: number; itemName: string; category: string }>;
+      }
+    ).candidates;
 
     for (const c of candidates) {
       items.set(c.itemId, { id: c.itemId, name: c.itemName, flags: [] });
@@ -155,10 +157,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         materialValue += leafBuyPrice * countPerUnit;
       }
 
-      const { listingFee, exchangeFee, profit: profitPerUnit } = calculateProfit(
-        sellPrice,
-        materialValue,
-      );
+      const {
+        listingFee,
+        exchangeFee,
+        profit: profitPerUnit,
+      } = calculateProfit(sellPrice, materialValue);
 
       const totalProfit = profitPerUnit * effectiveQty;
       const roi = materialValue > 0 ? (profitPerUnit / materialValue) * 100 : 0;
@@ -194,10 +197,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to calculate crafting profit' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to calculate crafting profit' }, { status: 500 });
   }
 }
 

@@ -57,19 +57,19 @@ Every API route must call `getRequestUser()` from `lib/auth.ts`. This is the sin
 
 ```typescript
 // lib/auth.ts — returns { id: "default", name: "You" }
-export function getRequestUser(req: NextRequest): User
+export function getRequestUser(req: NextRequest): User;
 ```
 
 ### Table Storage Schema
 
 All user data is partitioned by `userId`. Caches use `"shared"` partition. Never mix user and shared data in the same partition.
 
-| Table | Partition Key | Row Key | Notes |
-|-------|--------------|---------|-------|
-| Settings | userId | `exclusionList` / `priorityRules` / `apiKey` / `characterFilter` | JSON string in `value` prop. Max 64KB. |
-| PriceCache | `"shared"` | itemId | `buyPrice`, `sellPrice`, `cachedAt` |
-| GoalProgress | userId | goalId (legendary item ID) | One row per active goal. JSON in `value`. |
-| SkinCache | `"shared"` | skinId | 24-hour TTL |
+| Table        | Partition Key | Row Key                                                          | Notes                                     |
+| ------------ | ------------- | ---------------------------------------------------------------- | ----------------------------------------- |
+| Settings     | userId        | `exclusionList` / `priorityRules` / `apiKey` / `characterFilter` | JSON string in `value` prop. Max 64KB.    |
+| PriceCache   | `"shared"`    | itemId                                                           | `buyPrice`, `sellPrice`, `cachedAt`       |
+| GoalProgress | userId        | goalId (legendary item ID)                                       | One row per active goal. JSON in `value`. |
+| SkinCache    | `"shared"`    | skinId                                                           | 24-hour TTL                               |
 
 ### Recipe Tree Pattern
 
@@ -101,7 +101,7 @@ Never combine these. Always pass all active goal trees together to `calculateOve
 
 ```typescript
 const listingFee = Math.ceil(sellPrice * 0.05);
-const exchangeFee = Math.ceil(sellPrice * 0.10);
+const exchangeFee = Math.ceil(sellPrice * 0.1);
 const profit = sellPrice - listingFee - exchangeFee - craftingCost;
 ```
 

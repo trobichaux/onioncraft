@@ -4,12 +4,32 @@
     { "skinId": 5765, "method": "gem_store", "notes": "Glyphic weapons — Gem Store exclusive" },
     { "skinId": 6536, "method": "gem_store", "notes": "Foefire armor — Gem Store exclusive" },
     { "skinId": 1, "method": "content_drop", "notes": "Default skin — unlocked by all" },
-    { "skinId": 6162, "method": "achievement", "notes": "Luminescent armor — Living World S2 achievement" },
-    { "skinId": 6605, "method": "achievement", "notes": "Caladbolg weapons — HoT story achievement" },
-    { "skinId": 8240, "method": "content_drop", "notes": "Blossoming Mist Shard armor — Strike Mission reward" },
+    {
+      "skinId": 6162,
+      "method": "achievement",
+      "notes": "Luminescent armor — Living World S2 achievement"
+    },
+    {
+      "skinId": 6605,
+      "method": "achievement",
+      "notes": "Caladbolg weapons — HoT story achievement"
+    },
+    {
+      "skinId": 8240,
+      "method": "content_drop",
+      "notes": "Blossoming Mist Shard armor — Strike Mission reward"
+    },
     { "skinId": 7684, "method": "gem_store", "notes": "Aurene Legendary variant skin — Gem Store" },
-    { "skinId": 9000, "method": "content_drop", "notes": "Jade Tech weapons — End of Dragons content" },
-    { "skinId": 7100, "method": "achievement", "notes": "Envoy armor — raid collection achievement" },
+    {
+      "skinId": 9000,
+      "method": "content_drop",
+      "notes": "Jade Tech weapons — End of Dragons content"
+    },
+    {
+      "skinId": 7100,
+      "method": "achievement",
+      "notes": "Envoy armor — raid collection achievement"
+    },
     { "skinId": 6080, "method": "gem_store", "notes": "Awakened weapons — Gem Store exclusive" }
   ]
 }

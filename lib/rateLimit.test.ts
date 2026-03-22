@@ -1,9 +1,4 @@
-import {
-  checkRateLimit,
-  resetRateLimits,
-  setNowFn,
-  restoreNowFn,
-} from '@/lib/rateLimit';
+import { checkRateLimit, resetRateLimits, setNowFn, restoreNowFn } from '@/lib/rateLimit';
 
 beforeEach(() => {
   resetRateLimits();

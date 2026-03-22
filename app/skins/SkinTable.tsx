@@ -50,9 +50,7 @@ export default function SkinTable({ unowned }: SkinTableProps) {
   }
 
   const tpSkins = unowned.filter((s) => s.tpPrice != null && s.tpPrice > 0);
-  const maxTpPrice = tpSkins.length > 0
-    ? Math.max(...tpSkins.map((s) => s.tpPrice!))
-    : 0;
+  const maxTpPrice = tpSkins.length > 0 ? Math.max(...tpSkins.map((s) => s.tpPrice!)) : 0;
 
   // Initialize price range on first data load
   if (!priceRangeInit && maxTpPrice > 0) {
@@ -97,11 +95,7 @@ export default function SkinTable({ unowned }: SkinTableProps) {
     <div>
       <div>
         <label htmlFor="type-filter">Type: </label>
-        <select
-          id="type-filter"
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-        >
+        <select id="type-filter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
           <option value="">All</option>
           {types.map((t) => (
             <option key={t} value={t}>
@@ -204,8 +198,7 @@ export default function SkinTable({ unowned }: SkinTableProps) {
             <tr key={skin.skinId}>
               <td>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={skin.icon} alt="" width={24} height={24} />
-                {' '}{skin.name}
+                <img src={skin.icon} alt="" width={24} height={24} /> {skin.name}
               </td>
               <td>{skin.type}</td>
               <td>{skin.rarity ?? '—'}</td>

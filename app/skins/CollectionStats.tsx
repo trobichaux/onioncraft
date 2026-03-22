@@ -7,7 +7,12 @@ interface CollectionStatsProps {
   lastRefreshed?: string;
 }
 
-export default function CollectionStats({ total, owned, loading, lastRefreshed }: CollectionStatsProps) {
+export default function CollectionStats({
+  total,
+  owned,
+  loading,
+  lastRefreshed,
+}: CollectionStatsProps) {
   if (loading) {
     return <p role="status">Loading collection stats…</p>;
   }
@@ -15,7 +20,9 @@ export default function CollectionStats({ total, owned, loading, lastRefreshed }
   if (total === 0) {
     return (
       <div className="info-box">
-        <p>No collection data yet. Click <strong>Refresh Collection</strong> to load your skin data.</p>
+        <p>
+          No collection data yet. Click <strong>Refresh Collection</strong> to load your skin data.
+        </p>
       </div>
     );
   }

@@ -48,9 +48,7 @@ export default function ShoppingList() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId, completed }),
       });
-      setItems((prev) =>
-        prev.map((i) => (i.itemId === itemId ? { ...i, completed } : i)),
-      );
+      setItems((prev) => prev.map((i) => (i.itemId === itemId ? { ...i, completed } : i)));
     } catch {
       // Silently fail — will reload on next fetch
     }
@@ -100,15 +98,16 @@ export default function ShoppingList() {
   if (items.length === 0) {
     return (
       <div className="info-box">
-        <p>Your shopping list is empty. Calculate profits above and click <strong>Save to Shopping List</strong>.</p>
+        <p>
+          Your shopping list is empty. Calculate profits above and click{' '}
+          <strong>Save to Shopping List</strong>.
+        </p>
       </div>
     );
   }
 
   const completedCount = items.filter((i) => i.completed).length;
-  const totalProfit = items
-    .filter((i) => !i.completed)
-    .reduce((sum, i) => sum + i.totalProfit, 0);
+  const totalProfit = items.filter((i) => !i.completed).reduce((sum, i) => sum + i.totalProfit, 0);
 
   const ACTION_LABELS: Record<string, string> = {
     craft: '🔨 Craft',
@@ -119,7 +118,9 @@ export default function ShoppingList() {
   return (
     <div>
       <div className="shopping-meta">
-        <span>{items.length} items · {completedCount} done</span>
+        <span>
+          {items.length} items · {completedCount} done
+        </span>
         <span>Potential profit: {formatCoins(totalProfit)}</span>
       </div>
 
@@ -145,9 +146,7 @@ export default function ShoppingList() {
                   aria-label={`Mark ${item.itemName} as ${item.completed ? 'incomplete' : 'complete'}`}
                 />
               </td>
-              <td className={item.completed ? 'text-muted line-through' : ''}>
-                {item.itemName}
-              </td>
+              <td className={item.completed ? 'text-muted line-through' : ''}>{item.itemName}</td>
               <td>{item.quantity}</td>
               <td>{ACTION_LABELS[item.action] ?? item.action}</td>
               <td className="text-profit">{formatCoins(item.totalProfit)}</td>

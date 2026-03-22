@@ -102,7 +102,7 @@ describe('POST /api/v1/crafting/goals', () => {
     expect(mockPutGoal).toHaveBeenCalledWith(
       'default',
       'goal-123',
-      JSON.stringify({ itemId: 123, itemName: 'Sword' }),
+      JSON.stringify({ itemId: 123, itemName: 'Sword' })
     );
   });
 

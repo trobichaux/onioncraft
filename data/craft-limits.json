@@ -2,14 +2,39 @@
   "lastVerified": "2026-03-22",
   "limits": [
     { "itemId": 46742, "itemName": "Lump of Mithrillium", "dailyCap": 1, "resetType": "daily" },
-    { "itemId": 46740, "itemName": "Spool of Silk Weaving Thread", "dailyCap": 1, "resetType": "daily" },
-    { "itemId": 46739, "itemName": "Glob of Elder Spirit Residue", "dailyCap": 1, "resetType": "daily" },
-    { "itemId": 84354, "itemName": "Spool of Thick Elonian Cord", "dailyCap": 1, "resetType": "daily" },
+    {
+      "itemId": 46740,
+      "itemName": "Spool of Silk Weaving Thread",
+      "dailyCap": 1,
+      "resetType": "daily"
+    },
+    {
+      "itemId": 46739,
+      "itemName": "Glob of Elder Spirit Residue",
+      "dailyCap": 1,
+      "resetType": "daily"
+    },
+    {
+      "itemId": 84354,
+      "itemName": "Spool of Thick Elonian Cord",
+      "dailyCap": 1,
+      "resetType": "daily"
+    },
     { "itemId": 66913, "itemName": "Charged Quartz Crystal", "dailyCap": 1, "resetType": "daily" },
     { "itemId": 66937, "itemName": "Grow Lamp", "dailyCap": 1, "resetType": "daily" },
     { "itemId": 66923, "itemName": "Heat Stone", "dailyCap": 1, "resetType": "daily" },
-    { "itemId": 66993, "itemName": "Plate of Meaty Plant Food", "dailyCap": 1, "resetType": "daily" },
-    { "itemId": 67015, "itemName": "Plate of Piquant Plant Food", "dailyCap": 1, "resetType": "daily" },
+    {
+      "itemId": 66993,
+      "itemName": "Plate of Meaty Plant Food",
+      "dailyCap": 1,
+      "resetType": "daily"
+    },
+    {
+      "itemId": 67015,
+      "itemName": "Plate of Piquant Plant Food",
+      "dailyCap": 1,
+      "resetType": "daily"
+    },
     { "itemId": 66950, "itemName": "Vial of Maize Balm", "dailyCap": 1, "resetType": "daily" },
     { "itemId": 67377, "itemName": "Clay Pot", "dailyCap": 1, "resetType": "daily" },
     { "itemId": 66998, "itemName": "Gossamer Stuffing", "dailyCap": 1, "resetType": "daily" }

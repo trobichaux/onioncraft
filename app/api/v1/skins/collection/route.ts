@@ -50,9 +50,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to load collection data' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to load collection data' }, { status: 500 });
   }
 }

@@ -70,15 +70,11 @@ describe('PriorityRulesSchema', () => {
   });
 
   it('rejects weight above 100', () => {
-    expect(() =>
-      PriorityRulesSchema.parse([{ field: 'type', value: 'x', weight: 101 }])
-    ).toThrow();
+    expect(() => PriorityRulesSchema.parse([{ field: 'type', value: 'x', weight: 101 }])).toThrow();
   });
 
   it('rejects weight below 0', () => {
-    expect(() =>
-      PriorityRulesSchema.parse([{ field: 'type', value: 'x', weight: -1 }])
-    ).toThrow();
+    expect(() => PriorityRulesSchema.parse([{ field: 'type', value: 'x', weight: -1 }])).toThrow();
   });
 
   it('rejects missing fields', () => {
@@ -120,9 +116,7 @@ describe('ApiKeySchema', () => {
   });
 
   it('rejects missing permissions', () => {
-    expect(() =>
-      ApiKeySchema.parse({ key: 'k', validatedAt: '2024-01-01T00:00:00Z' })
-    ).toThrow();
+    expect(() => ApiKeySchema.parse({ key: 'k', validatedAt: '2024-01-01T00:00:00Z' })).toThrow();
   });
 });
 
@@ -139,15 +133,11 @@ describe('CharacterFilterSchema', () => {
   });
 
   it('rejects missing enabled field', () => {
-    expect(() =>
-      CharacterFilterSchema.parse({ characters: [] })
-    ).toThrow();
+    expect(() => CharacterFilterSchema.parse({ characters: [] })).toThrow();
   });
 
   it('rejects non-boolean enabled', () => {
-    expect(() =>
-      CharacterFilterSchema.parse({ enabled: 'yes', characters: [] })
-    ).toThrow();
+    expect(() => CharacterFilterSchema.parse({ enabled: 'yes', characters: [] })).toThrow();
   });
 });
 
@@ -271,15 +261,11 @@ describe('GoalProgressSchema', () => {
   });
 
   it('rejects non-positive itemId', () => {
-    expect(() =>
-      GoalProgressSchema.parse({ itemId: 0, itemName: 'Test' })
-    ).toThrow();
+    expect(() => GoalProgressSchema.parse({ itemId: 0, itemName: 'Test' })).toThrow();
   });
 
   it('rejects non-integer itemId', () => {
-    expect(() =>
-      GoalProgressSchema.parse({ itemId: 1.5, itemName: 'Test' })
-    ).toThrow();
+    expect(() => GoalProgressSchema.parse({ itemId: 1.5, itemName: 'Test' })).toThrow();
   });
 
   it('rejects missing itemName', () => {

@@ -67,21 +67,17 @@ describe('POST /api/v1/settings/api-key', () => {
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
     expect(json.permissions).toEqual(
-      expect.arrayContaining(['account', 'inventories', 'wallet', 'unlocks', 'characters']),
+      expect.arrayContaining(['account', 'inventories', 'wallet', 'unlocks', 'characters'])
     );
     // Key must NOT be returned
     expect(json.key).toBeUndefined();
 
     // Verify stored value
-    expect(mockPutSetting).toHaveBeenCalledWith(
-      'default',
-      'apiKey',
-      expect.any(String),
-    );
+    expect(mockPutSetting).toHaveBeenCalledWith('default', 'apiKey', expect.any(String));
     const storedValue = JSON.parse(mockPutSetting.mock.calls[0][2]);
     expect(storedValue.key).toBe('ABCD-1234');
     expect(storedValue.permissions).toEqual(
-      expect.arrayContaining(['account', 'inventories', 'wallet', 'unlocks', 'characters']),
+      expect.arrayContaining(['account', 'inventories', 'wallet', 'unlocks', 'characters'])
     );
     expect(storedValue.validatedAt).toBeDefined();
   });
@@ -121,7 +117,7 @@ describe('POST /api/v1/settings/api-key', () => {
     expect(res.status).toBe(400);
     expect(json.error).toContain('Missing permissions');
     expect(json.missingPermissions).toEqual(
-      expect.arrayContaining(['inventories', 'unlocks', 'characters']),
+      expect.arrayContaining(['inventories', 'unlocks', 'characters'])
     );
   });
 
@@ -173,7 +169,7 @@ describe('GET /api/v1/settings/api-key', () => {
         key: 'SECRET-KEY',
         permissions: ['account', 'inventories', 'wallet', 'unlocks', 'characters'],
         validatedAt: '2024-01-01T00:00:00.000Z',
-      }),
+      })
     );
 
     const res = await GET(makeRequest('GET'));

@@ -8,30 +8,30 @@ import type { RecipeNode } from '@/lib/recipeTree';
 describe('calculateProfit', () => {
   it('computes correct fees for sell price 100c', () => {
     const result = calculateProfit(100, 0);
-    expect(result.listingFee).toBe(5);    // ceil(100 * 0.05) = 5
-    expect(result.exchangeFee).toBe(10);  // ceil(100 * 0.10) = 10
-    expect(result.profit).toBe(85);       // 100 - 5 - 10 - 0
+    expect(result.listingFee).toBe(5); // ceil(100 * 0.05) = 5
+    expect(result.exchangeFee).toBe(10); // ceil(100 * 0.10) = 10
+    expect(result.profit).toBe(85); // 100 - 5 - 10 - 0
   });
 
   it('computes correct fees for sell price 1c (minimum rounding)', () => {
     const result = calculateProfit(1, 0);
-    expect(result.listingFee).toBe(1);    // ceil(1 * 0.05) = ceil(0.05) = 1
-    expect(result.exchangeFee).toBe(1);   // ceil(1 * 0.10) = ceil(0.10) = 1
-    expect(result.profit).toBe(-1);       // 1 - 1 - 1 - 0 = -1
+    expect(result.listingFee).toBe(1); // ceil(1 * 0.05) = ceil(0.05) = 1
+    expect(result.exchangeFee).toBe(1); // ceil(1 * 0.10) = ceil(0.10) = 1
+    expect(result.profit).toBe(-1); // 1 - 1 - 1 - 0 = -1
   });
 
   it('computes correct fees for sell price 3c (ceil rounding)', () => {
     const result = calculateProfit(3, 0);
-    expect(result.listingFee).toBe(1);    // ceil(3 * 0.05) = ceil(0.15) = 1
-    expect(result.exchangeFee).toBe(1);   // ceil(3 * 0.10) = ceil(0.30) = 1
-    expect(result.profit).toBe(1);        // 3 - 1 - 1 - 0 = 1
+    expect(result.listingFee).toBe(1); // ceil(3 * 0.05) = ceil(0.15) = 1
+    expect(result.exchangeFee).toBe(1); // ceil(3 * 0.10) = ceil(0.30) = 1
+    expect(result.profit).toBe(1); // 3 - 1 - 1 - 0 = 1
   });
 
   it('subtracts crafting cost from profit', () => {
     const result = calculateProfit(100, 50);
     expect(result.listingFee).toBe(5);
     expect(result.exchangeFee).toBe(10);
-    expect(result.profit).toBe(35);       // 100 - 5 - 10 - 50 = 35
+    expect(result.profit).toBe(35); // 100 - 5 - 10 - 50 = 35
   });
 
   it('shows that 0.85 * sellPrice gives WRONG answer for certain values', () => {
@@ -63,9 +63,9 @@ describe('calculateProfit', () => {
 
   it('handles large sell prices', () => {
     const result = calculateProfit(100000, 50000);
-    expect(result.listingFee).toBe(5000);   // ceil(100000 * 0.05)
+    expect(result.listingFee).toBe(5000); // ceil(100000 * 0.05)
     expect(result.exchangeFee).toBe(10000); // ceil(100000 * 0.10)
-    expect(result.profit).toBe(35000);      // 100000 - 5000 - 10000 - 50000
+    expect(result.profit).toBe(35000); // 100000 - 5000 - 10000 - 50000
   });
 });
 
@@ -82,8 +82,22 @@ describe('computeCraftingCost', () => {
       craftable: true,
       purchasable: true,
       ingredients: [
-        { itemId: 1, itemName: 'Mat A', count: 10, craftable: false, purchasable: true, ingredients: [] },
-        { itemId: 2, itemName: 'Mat B', count: 5, craftable: false, purchasable: true, ingredients: [] },
+        {
+          itemId: 1,
+          itemName: 'Mat A',
+          count: 10,
+          craftable: false,
+          purchasable: true,
+          ingredients: [],
+        },
+        {
+          itemId: 2,
+          itemName: 'Mat B',
+          count: 5,
+          craftable: false,
+          purchasable: true,
+          ingredients: [],
+        },
       ],
     };
     const prices = new Map<number, { buyPrice: number; sellPrice: number }>([
@@ -105,7 +119,14 @@ describe('computeCraftingCost', () => {
       craftable: true,
       purchasable: true,
       ingredients: [
-        { itemId: 1, itemName: 'Mat A', count: 10, craftable: false, purchasable: true, ingredients: [] },
+        {
+          itemId: 1,
+          itemName: 'Mat A',
+          count: 10,
+          craftable: false,
+          purchasable: true,
+          ingredients: [],
+        },
       ],
     };
     const prices = new Map([[1, { buyPrice: 100, sellPrice: 120 }]]);
@@ -156,7 +177,14 @@ describe('computeCraftingCost', () => {
           craftable: true,
           purchasable: true,
           ingredients: [
-            { itemId: 1, itemName: 'Raw', count: 10, craftable: false, purchasable: true, ingredients: [] },
+            {
+              itemId: 1,
+              itemName: 'Raw',
+              count: 10,
+              craftable: false,
+              purchasable: true,
+              ingredients: [],
+            },
           ],
         },
       ],
@@ -176,7 +204,14 @@ describe('computeCraftingCost', () => {
       craftable: true,
       purchasable: true,
       ingredients: [
-        { itemId: 1, itemName: 'Mat', count: 5, craftable: false, purchasable: true, ingredients: [] },
+        {
+          itemId: 1,
+          itemName: 'Mat',
+          count: 5,
+          craftable: false,
+          purchasable: true,
+          ingredients: [],
+        },
       ],
     };
     const prices = new Map([[1, { buyPrice: 100, sellPrice: 120 }]]);
@@ -200,7 +235,14 @@ describe('buildProfitResult', () => {
       craftable: true,
       purchasable: true,
       ingredients: [
-        { itemId: 1, itemName: 'Mat', count: 10, craftable: false, purchasable: true, ingredients: [] },
+        {
+          itemId: 1,
+          itemName: 'Mat',
+          count: 10,
+          craftable: false,
+          purchasable: true,
+          ingredients: [],
+        },
       ],
     };
     const prices = new Map([
@@ -214,10 +256,10 @@ describe('buildProfitResult', () => {
     expect(result.itemId).toBe(100);
     expect(result.itemName).toBe('Product');
     expect(result.sellPrice).toBe(1000);
-    expect(result.craftingCost).toBe(500);     // 10 * 50
-    expect(result.listingFee).toBe(50);        // ceil(1000 * 0.05)
-    expect(result.exchangeFee).toBe(100);      // ceil(1000 * 0.10)
-    expect(result.profit).toBe(350);           // 1000 - 50 - 100 - 500
-    expect(result.roi).toBe(70);               // (350/500) * 100
+    expect(result.craftingCost).toBe(500); // 10 * 50
+    expect(result.listingFee).toBe(50); // ceil(1000 * 0.05)
+    expect(result.exchangeFee).toBe(100); // ceil(1000 * 0.10)
+    expect(result.profit).toBe(350); // 1000 - 50 - 100 - 500
+    expect(result.roi).toBe(70); // (350/500) * 100
   });
 });

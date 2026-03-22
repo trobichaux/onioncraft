@@ -33,10 +33,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to load shopping list' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to load shopping list' }, { status: 500 });
   }
 }
 
@@ -50,7 +47,7 @@ const SaveSchema = z.object({
       action: z.enum(['craft', 'buy', 'farm']).default('craft'),
       unitProfit: z.number().int().default(0),
       totalProfit: z.number().int().default(0),
-    }),
+    })
   ),
 });
 
@@ -66,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           headers: {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
           },
-        },
+        }
       );
     }
 
@@ -95,10 +92,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to save shopping list items' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to save shopping list items' }, { status: 500 });
   }
 }
 
@@ -120,7 +114,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
           headers: {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
           },
-        },
+        }
       );
     }
 
@@ -141,10 +135,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to update shopping list item' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to update shopping list item' }, { status: 500 });
   }
 }
 
@@ -166,7 +157,7 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
           headers: {
             'Retry-After': String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
           },
-        },
+        }
       );
     }
 
@@ -189,9 +180,6 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
       userId: user.id,
       error: err instanceof Error ? err.message : String(err),
     });
-    return NextResponse.json(
-      { error: 'Failed to delete shopping list item' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to delete shopping list item' }, { status: 500 });
   }
 }

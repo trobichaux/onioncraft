@@ -11,9 +11,7 @@ export default defineConfig({
     baseURL: 'http://localhost:4280', // SWA CLI default port
     trace: 'on-first-retry',
   },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  ],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm run dev:swa',
     url: 'http://localhost:4280',

@@ -62,7 +62,7 @@ describe('POST /api/v1/skins/catalog/refresh', () => {
 
   it('refreshes and caches all skins', async () => {
     mockGetSetting.mockResolvedValue(
-      JSON.stringify({ key: 'TEST-KEY', permissions: [], validatedAt: '2024-01-01T00:00:00.000Z' }),
+      JSON.stringify({ key: 'TEST-KEY', permissions: [], validatedAt: '2024-01-01T00:00:00.000Z' })
     );
 
     mockGw2Get.mockResolvedValue([1, 2, 3]);

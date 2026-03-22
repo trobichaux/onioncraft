@@ -1,8 +1,4 @@
-import {
-  TableClient,
-  RestError,
-  TransactionAction,
-} from '@azure/data-tables';
+import { TableClient, RestError, TransactionAction } from '@azure/data-tables';
 import type { PriceCacheEntity, SkinCacheEntity } from './schemas';
 
 // ---------------------------------------------------------------------------
@@ -20,7 +16,13 @@ function getConnectionString(): string {
   return connStr;
 }
 
-const TABLE_NAMES = ['Settings', 'PriceCache', 'GoalProgress', 'SkinCache', 'ShoppingList'] as const;
+const TABLE_NAMES = [
+  'Settings',
+  'PriceCache',
+  'GoalProgress',
+  'SkinCache',
+  'ShoppingList',
+] as const;
 export type TableName = (typeof TABLE_NAMES)[number];
 
 const tableClients = new Map<TableName, TableClient>();
@@ -78,10 +80,7 @@ const MAX_VALUE_BYTES = 64 * 1024; // 64 KB
  *
  * @remarks userId must come from `getRequestUser()` at the route level.
  */
-export async function getSetting(
-  userId: string,
-  settingKey: SettingKey
-): Promise<string | null> {
+export async function getSetting(userId: string, settingKey: SettingKey): Promise<string | null> {
   const client = await getTableClient('Settings');
   try {
     const entity = await client.getEntity<{ value: string }>(userId, settingKey);
@@ -107,10 +106,7 @@ export async function putSetting(
     throw new Error(`Setting value exceeds maximum size of ${MAX_VALUE_BYTES} bytes`);
   }
   const client = await getTableClient('Settings');
-  await client.upsertEntity(
-    { partitionKey: userId, rowKey: settingKey, value },
-    'Replace'
-  );
+  await client.upsertEntity({ partitionKey: userId, rowKey: settingKey, value }, 'Replace');
 }
 
 /**
@@ -118,10 +114,7 @@ export async function putSetting(
  *
  * @remarks userId must come from `getRequestUser()` at the route level.
  */
-export async function deleteSetting(
-  userId: string,
-  settingKey: SettingKey
-): Promise<void> {
+export async function deleteSetting(userId: string, settingKey: SettingKey): Promise<void> {
   const client = await getTableClient('Settings');
   try {
     await client.deleteEntity(userId, settingKey);
@@ -139,9 +132,7 @@ export async function deleteSetting(
  * Batch-get cached prices for a list of item IDs.
  * Missing items are simply omitted from the returned Map.
  */
-export async function getCachedPrices(
-  itemIds: string[]
-): Promise<Map<string, PriceCacheEntity>> {
+export async function getCachedPrices(itemIds: string[]): Promise<Map<string, PriceCacheEntity>> {
   const client = await getTableClient('PriceCache');
   const result = new Map<string, PriceCacheEntity>();
 
@@ -243,16 +234,9 @@ export async function getGoals(userId: string): Promise<GoalProgressRecord[]> {
  *
  * @remarks userId must come from `getRequestUser()` at the route level.
  */
-export async function putGoal(
-  userId: string,
-  goalId: string,
-  value: string
-): Promise<void> {
+export async function putGoal(userId: string, goalId: string, value: string): Promise<void> {
   const client = await getTableClient('GoalProgress');
-  await client.upsertEntity(
-    { partitionKey: userId, rowKey: goalId, value },
-    'Replace'
-  );
+  await client.upsertEntity({ partitionKey: userId, rowKey: goalId, value }, 'Replace');
 }
 
 /**
@@ -278,9 +262,7 @@ export async function deleteGoal(userId: string, goalId: string): Promise<void> 
  * Batch-get cached skins for a list of skin IDs.
  * Missing skins are simply omitted from the returned Map.
  */
-export async function getCachedSkins(
-  skinIds: string[]
-): Promise<Map<string, SkinCacheEntity>> {
+export async function getCachedSkins(skinIds: string[]): Promise<Map<string, SkinCacheEntity>> {
   const client = await getTableClient('SkinCache');
   const result = new Map<string, SkinCacheEntity>();
 
@@ -384,7 +366,7 @@ export async function getShoppingList(userId: string): Promise<ShoppingListItem[
 
 export async function putShoppingListItems(
   userId: string,
-  items: ShoppingListItem[],
+  items: ShoppingListItem[]
 ): Promise<void> {
   if (items.length === 0) return;
   const client = await getTableClient('ShoppingList');
@@ -407,7 +389,7 @@ export async function putShoppingListItems(
 export async function toggleShoppingListItem(
   userId: string,
   itemId: string,
-  completed: boolean,
+  completed: boolean
 ): Promise<void> {
   const client = await getTableClient('ShoppingList');
   try {
@@ -419,7 +401,7 @@ export async function toggleShoppingListItem(
         ...entity,
         completed,
       },
-      'Replace',
+      'Replace'
     );
   } catch (err) {
     if (err instanceof RestError && err.statusCode === 404) {

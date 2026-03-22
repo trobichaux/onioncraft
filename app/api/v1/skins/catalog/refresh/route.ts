@@ -59,9 +59,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       error: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
-    return NextResponse.json(
-      { error: 'Failed to refresh skin catalog' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Failed to refresh skin catalog' }, { status: 500 });
   }
 }

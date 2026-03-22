@@ -8,7 +8,7 @@ const client = new Gw2Client();
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { path: string[] } },
+  { params }: { params: { path: string[] } }
 ): Promise<NextResponse> {
   // Auth gate — every route must call getRequestUser.
   getRequestUser(req);
@@ -26,10 +26,7 @@ export async function GET(
     return NextResponse.json(data);
   } catch (err) {
     if (err instanceof CircuitOpenError) {
-      return NextResponse.json(
-        { error: 'GW2 API temporarily unavailable' },
-        { status: 503 },
-      );
+      return NextResponse.json({ error: 'GW2 API temporarily unavailable' }, { status: 503 });
     }
 
     if (err instanceof Gw2ApiError) {

@@ -19,9 +19,7 @@ export default function SkinRefreshButton({
 
       <div aria-live="polite" role="status">
         {lastRefreshed && !refreshing && (
-          <p>
-            Last refreshed: {new Date(lastRefreshed).toLocaleString()}
-          </p>
+          <p>Last refreshed: {new Date(lastRefreshed).toLocaleString()}</p>
         )}
       </div>
     </div>

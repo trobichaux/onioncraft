@@ -36,8 +36,7 @@ export default function RefreshButton() {
         {loading && <p>Refreshing prices from Trading Post…</p>}
         {result && (
           <p>
-            Refreshed {result.refreshed} prices at{' '}
-            {new Date(result.cachedAt).toLocaleTimeString()}
+            Refreshed {result.refreshed} prices at {new Date(result.cachedAt).toLocaleTimeString()}
           </p>
         )}
         {error && <p role="alert">{error}</p>}

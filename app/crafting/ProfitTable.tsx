@@ -119,7 +119,10 @@ export default function ProfitTable() {
   if (needsKey) {
     return (
       <div className="info-box">
-        <p>Add your GW2 API key on the <a href="/settings">Settings page</a> to see crafting profits. The API key is needed to read your inventory.</p>
+        <p>
+          Add your GW2 API key on the <a href="/settings">Settings page</a> to see crafting profits.
+          The API key is needed to read your inventory.
+        </p>
       </div>
     );
   }
@@ -132,9 +135,15 @@ export default function ProfitTable() {
   if (items.length === 0) {
     return (
       <div className="info-box">
-        <p>No profitable crafts found. Make sure to <strong>Refresh Prices</strong> first, and check that you have materials in your bank or material storage.</p>
+        <p>
+          No profitable crafts found. Make sure to <strong>Refresh Prices</strong> first, and check
+          that you have materials in your bank or material storage.
+        </p>
         {data.goalsCount > 0 && (
-          <p>You have {data.goalsCount} goal{data.goalsCount > 1 ? 's' : ''} reserving materials. Materials needed for goals are excluded from profit calculations.</p>
+          <p>
+            You have {data.goalsCount} goal{data.goalsCount > 1 ? 's' : ''} reserving materials.
+            Materials needed for goals are excluded from profit calculations.
+          </p>
         )}
       </div>
     );
@@ -164,7 +173,12 @@ export default function ProfitTable() {
     <div>
       <p className="profit-meta">
         Inventory: {data.inventorySize} item types
-        {data.goalsCount > 0 && <> · {data.goalsCount} goal{data.goalsCount > 1 ? 's' : ''} reserving materials</>}
+        {data.goalsCount > 0 && (
+          <>
+            {' '}
+            · {data.goalsCount} goal{data.goalsCount > 1 ? 's' : ''} reserving materials
+          </>
+        )}
       </p>
       <table>
         <thead>
@@ -194,7 +208,8 @@ export default function ProfitTable() {
                     aria-label={`Daily limit: ${item.dailyCap}`}
                     title={`Daily cap: ${item.dailyCap}`}
                   >
-                    {' '}🔒{item.dailyCap}/day
+                    {' '}
+                    🔒{item.dailyCap}/day
                   </span>
                 )}
               </td>
@@ -207,7 +222,9 @@ export default function ProfitTable() {
               <td className={item.totalProfit >= 0 ? 'text-profit' : 'text-loss'}>
                 {formatCoins(item.totalProfit)}
               </td>
-              <td className={item.roi >= 0 ? 'text-profit' : 'text-loss'}>{item.roi.toFixed(1)}%</td>
+              <td className={item.roi >= 0 ? 'text-profit' : 'text-loss'}>
+                {item.roi.toFixed(1)}%
+              </td>
             </tr>
           ))}
         </tbody>

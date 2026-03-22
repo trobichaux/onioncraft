@@ -1,8 +1,4 @@
-import {
-  buildRecipeTree,
-  calculateOverages,
-  maxCraftableFromInventory,
-} from '@/lib/recipeTree';
+import { buildRecipeTree, calculateOverages, maxCraftableFromInventory } from '@/lib/recipeTree';
 import type { Recipe, Item } from '@/lib/recipeTree';
 
 // ---------------------------------------------------------------------------
@@ -116,9 +112,7 @@ describe('buildRecipeTree', () => {
 
   it('treats items with no recipe as leaf nodes', () => {
     const recipes = makeRecipes([]);
-    const items = makeItems([
-      { id: 42, name: 'Raw Material', flags: [] },
-    ]);
+    const items = makeItems([{ id: 42, name: 'Raw Material', flags: [] }]);
 
     const tree = buildRecipeTree(42, recipes, items);
 
@@ -149,9 +143,7 @@ describe('buildRecipeTree', () => {
 
   it('marks SoulBound items as non-purchasable', () => {
     const recipes = makeRecipes([]);
-    const items = makeItems([
-      { id: 99, name: 'Soulbound Gear', flags: ['SoulBound'] },
-    ]);
+    const items = makeItems([{ id: 99, name: 'Soulbound Gear', flags: ['SoulBound'] }]);
 
     const tree = buildRecipeTree(99, recipes, items);
     expect(tree.purchasable).toBe(false);
@@ -191,9 +183,7 @@ describe('buildRecipeTree', () => {
 
   it('loads daily cap from craft-limits.json', () => {
     const recipes = makeRecipes([]);
-    const items = makeItems([
-      { id: 46742, name: 'Spool of Silk Weaving Thread', flags: [] },
-    ]);
+    const items = makeItems([{ id: 46742, name: 'Spool of Silk Weaving Thread', flags: [] }]);
 
     const tree = buildRecipeTree(46742, recipes, items);
     expect(tree.dailyCap).toBe(1);
@@ -241,7 +231,7 @@ describe('calculateOverages', () => {
         { id: 100, name: 'Product', flags: [] },
         { id: 1, name: 'Mat A', flags: [] },
         { id: 2, name: 'Mat B', flags: [] },
-      ]),
+      ])
     );
 
     const inventory = new Map<number, number>([
@@ -251,8 +241,8 @@ describe('calculateOverages', () => {
 
     const overages = calculateOverages([tree], inventory);
 
-    expect(overages.get(1)).toBe(5);   // 15 - 10 = surplus of 5
-    expect(overages.get(2)).toBe(-2);  // 3 - 5 = need 2 more
+    expect(overages.get(1)).toBe(5); // 15 - 10 = surplus of 5
+    expect(overages.get(2)).toBe(-2); // 3 - 5 = need 2 more
   });
 
   it('computes overages across MULTIPLE goals', () => {
@@ -314,7 +304,7 @@ describe('calculateOverages', () => {
       makeItems([
         { id: 100, name: 'Product', flags: [] },
         { id: 1, name: 'Mat', flags: [] },
-      ]),
+      ])
     );
 
     const inventory = new Map<number, number>();
@@ -372,7 +362,7 @@ describe('calculateOverages', () => {
       makeItems([
         { id: 100, name: 'Product', flags: [] },
         { id: 1, name: 'Mat', flags: [] },
-      ]),
+      ])
     );
 
     const inventory = new Map<number, number>([
@@ -399,23 +389,27 @@ describe('calculateOverages', () => {
 
 describe('maxCraftableFromInventory', () => {
   it('returns 0 for non-craftable items', () => {
-    const tree = buildRecipeTree(42, makeRecipes([]), makeItems([
-      { id: 42, name: 'Raw Material', flags: [] },
-    ]));
+    const tree = buildRecipeTree(
+      42,
+      makeRecipes([]),
+      makeItems([{ id: 42, name: 'Raw Material', flags: [] }])
+    );
 
     const available = new Map<number, number>([[42, 100]]);
     expect(maxCraftableFromInventory(tree, available)).toBe(0);
   });
 
   it('computes quantity limited by scarcest ingredient', () => {
-    const recipes = makeRecipes([{
-      outputItemId: 100,
-      outputItemCount: 1,
-      ingredients: [
-        { itemId: 1, count: 10 },
-        { itemId: 2, count: 5 },
-      ],
-    }]);
+    const recipes = makeRecipes([
+      {
+        outputItemId: 100,
+        outputItemCount: 1,
+        ingredients: [
+          { itemId: 1, count: 10 },
+          { itemId: 2, count: 5 },
+        ],
+      },
+    ]);
     const items = makeItems([
       { id: 100, name: 'Product', flags: [] },
       { id: 1, name: 'Mat A', flags: [] },
@@ -424,22 +418,24 @@ describe('maxCraftableFromInventory', () => {
 
     const tree = buildRecipeTree(100, recipes, items);
     const available = new Map<number, number>([
-      [1, 30],  // enough for 3 crafts
-      [2, 10],  // enough for 2 crafts → bottleneck
+      [1, 30], // enough for 3 crafts
+      [2, 10], // enough for 2 crafts → bottleneck
     ]);
 
     expect(maxCraftableFromInventory(tree, available)).toBe(2);
   });
 
   it('returns 0 when missing an ingredient', () => {
-    const recipes = makeRecipes([{
-      outputItemId: 100,
-      outputItemCount: 1,
-      ingredients: [
-        { itemId: 1, count: 10 },
-        { itemId: 2, count: 5 },
-      ],
-    }]);
+    const recipes = makeRecipes([
+      {
+        outputItemId: 100,
+        outputItemCount: 1,
+        ingredients: [
+          { itemId: 1, count: 10 },
+          { itemId: 2, count: 5 },
+        ],
+      },
+    ]);
     const items = makeItems([
       { id: 100, name: 'Product', flags: [] },
       { id: 1, name: 'Mat A', flags: [] },

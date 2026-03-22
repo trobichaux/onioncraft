@@ -1,11 +1,7 @@
-import {
-  CircuitBreaker,
-  CircuitOpenError,
-  CircuitState,
-} from './circuitBreaker';
+import { CircuitBreaker, CircuitOpenError, CircuitState } from './circuitBreaker';
 
 function makeBreaker(
-  opts: { failureThreshold?: number; cooldownMs?: number; now?: () => number } = {},
+  opts: { failureThreshold?: number; cooldownMs?: number; now?: () => number } = {}
 ) {
   let clock = 0;
   const now = opts.now ?? (() => clock);

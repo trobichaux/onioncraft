@@ -99,7 +99,7 @@ export default function SkinsPage() {
         setLoading(false);
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkForChanges = useCallback(async () => {
@@ -154,7 +154,10 @@ export default function SkinsPage() {
       <div>
         <h1>Skin Collection Tracker</h1>
         <div className="info-box">
-          <p>Add your GW2 API key on the <a href="/settings">Settings page</a> to use the skin tracker.</p>
+          <p>
+            Add your GW2 API key on the <a href="/settings">Settings page</a> to use the skin
+            tracker.
+          </p>
         </div>
       </div>
     );
@@ -165,7 +168,16 @@ export default function SkinsPage() {
       <h1>Skin Collection Tracker</h1>
 
       {changesDetected && (
-        <div role="status" className="info-box" style={{ backgroundColor: '#fff3cd', padding: '0.75rem', borderRadius: 4, marginBottom: '1rem' }}>
+        <div
+          role="status"
+          className="info-box"
+          style={{
+            backgroundColor: '#fff3cd',
+            padding: '0.75rem',
+            borderRadius: 4,
+            marginBottom: '1rem',
+          }}
+        >
           <p>
             🔔 Your skin collection has changed since the last refresh.{' '}
             <button type="button" onClick={handleRefresh} disabled={refreshing}>
@@ -206,7 +218,10 @@ export default function SkinsPage() {
           <p role="status">Loading skin collection…</p>
         ) : !data ? (
           <div className="info-box">
-            <p>Click <strong>Refresh Collection</strong> above to load your skin data for the first time.</p>
+            <p>
+              Click <strong>Refresh Collection</strong> above to load your skin data for the first
+              time.
+            </p>
           </div>
         ) : (
           <SkinTable unowned={data.unowned} />

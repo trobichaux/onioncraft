@@ -78,7 +78,7 @@ describe('PUT /api/v1/settings/character-filter', () => {
     expect(mockPutSetting).toHaveBeenCalledWith(
       'default',
       'characterFilter',
-      JSON.stringify(filter),
+      JSON.stringify(filter)
     );
   });
 

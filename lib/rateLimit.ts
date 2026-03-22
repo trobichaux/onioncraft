@@ -37,7 +37,7 @@ export function resetRateLimits(): void {
  */
 export function checkRateLimit(
   userId: string,
-  options?: { maxRequests?: number; windowMs?: number },
+  options?: { maxRequests?: number; windowMs?: number }
 ): RateLimitResult {
   const maxRequests = options?.maxRequests ?? DEFAULT_MAX_REQUESTS;
   const windowMs = options?.windowMs ?? DEFAULT_WINDOW_MS;

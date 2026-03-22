@@ -1,0 +1,29 @@
+[
+  {
+    "id": 19699,
+    "name": "Mystic Forge Conduit",
+    "type": "Consumable",
+    "rarity": "Basic",
+    "level": 0,
+    "icon": "https://render.guildwars2.com/file/ABC123/12345.png",
+    "flags": ["AccountBound", "NoSell"]
+  },
+  {
+    "id": 24,
+    "name": "Sealed Package of Snowballs",
+    "type": "Container",
+    "rarity": "Basic",
+    "level": 0,
+    "icon": "https://render.guildwars2.com/file/DEF456/67890.png",
+    "flags": ["NoSell"]
+  },
+  {
+    "id": 46762,
+    "name": "Berserker's Orichalcum Imbued Inscription",
+    "type": "CraftingMaterial",
+    "rarity": "Exotic",
+    "level": 80,
+    "icon": "https://render.guildwars2.com/file/GHI789/24680.png",
+    "flags": []
+  }
+]

@@ -1,4 +1,13 @@
-import { TableClient } from '@azure/data-tables';
+import {
+  TableClient,
+  RestError,
+  TransactionAction,
+} from '@azure/data-tables';
+import type { PriceCacheEntity, SkinCacheEntity } from './schemas';
+
+// ---------------------------------------------------------------------------
+// Connection & client helpers
+// ---------------------------------------------------------------------------
 
 function getConnectionString(): string {
   const connStr = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -11,7 +20,7 @@ function getConnectionString(): string {
   return connStr;
 }
 
-const TABLE_NAMES= ['Settings', 'PriceCache', 'GoalProgress', 'SkinCache'] as const;
+const TABLE_NAMES = ['Settings', 'PriceCache', 'GoalProgress', 'SkinCache'] as const;
 export type TableName = (typeof TABLE_NAMES)[number];
 
 const tableClients = new Map<TableName, TableClient>();
@@ -47,4 +56,274 @@ export async function ensureTables(): Promise<void> {
  */
 export function _resetClients(): void {
   tableClients.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+export type SettingKey = 'exclusionList' | 'priorityRules' | 'apiKey' | 'characterFilter';
+
+const MAX_VALUE_BYTES = 64 * 1024; // 64 KB
+
+/**
+ * Get a raw JSON string for a user setting.
+ * Returns null when the setting does not exist.
+ *
+ * @remarks userId must come from `getRequestUser()` at the route level.
+ */
+export async function getSetting(
+  userId: string,
+  settingKey: SettingKey
+): Promise<string | null> {
+  const client = await getTableClient('Settings');
+  try {
+    const entity = await client.getEntity<{ value: string }>(userId, settingKey);
+    return entity.value ?? null;
+  } catch (err) {
+    if (err instanceof RestError && err.statusCode === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Upsert a user setting.
+ *
+ * @throws Error if `value` exceeds 64 KB.
+ * @remarks userId must come from `getRequestUser()` at the route level.
+ */
+export async function putSetting(
+  userId: string,
+  settingKey: SettingKey,
+  value: string
+): Promise<void> {
+  if (new TextEncoder().encode(value).length > MAX_VALUE_BYTES) {
+    throw new Error(`Setting value exceeds maximum size of ${MAX_VALUE_BYTES} bytes`);
+  }
+  const client = await getTableClient('Settings');
+  await client.upsertEntity(
+    { partitionKey: userId, rowKey: settingKey, value },
+    'Replace'
+  );
+}
+
+/**
+ * Delete a user setting. Silently succeeds if the setting does not exist.
+ *
+ * @remarks userId must come from `getRequestUser()` at the route level.
+ */
+export async function deleteSetting(
+  userId: string,
+  settingKey: SettingKey
+): Promise<void> {
+  const client = await getTableClient('Settings');
+  try {
+    await client.deleteEntity(userId, settingKey);
+  } catch (err) {
+    if (err instanceof RestError && err.statusCode === 404) return;
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PriceCache
+// ---------------------------------------------------------------------------
+
+/**
+ * Batch-get cached prices for a list of item IDs.
+ * Missing items are simply omitted from the returned Map.
+ */
+export async function getCachedPrices(
+  itemIds: string[]
+): Promise<Map<string, PriceCacheEntity>> {
+  const client = await getTableClient('PriceCache');
+  const result = new Map<string, PriceCacheEntity>();
+
+  for (const itemId of itemIds) {
+    try {
+      const entity = await client.getEntity<{
+        buyPrice: number;
+        sellPrice: number;
+        cachedAt: string;
+      }>('shared', itemId);
+      result.set(itemId, {
+        buyPrice: entity.buyPrice,
+        sellPrice: entity.sellPrice,
+        cachedAt: entity.cachedAt,
+      });
+    } catch (err) {
+      if (err instanceof RestError && err.statusCode === 404) continue;
+      throw err;
+    }
+  }
+
+  return result;
+}
+
+/** Chunk an array into groups of `size`. */
+function chunk<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
+ * Batch-upsert cached prices.
+ * Automatically chunks into transactions of ≤100 (Azure Table Storage limit).
+ */
+export async function putCachedPrices(
+  prices: Array<{ itemId: string } & PriceCacheEntity>
+): Promise<void> {
+  const client = await getTableClient('PriceCache');
+  const batches = chunk(prices, 100);
+
+  for (const batch of batches) {
+    const actions: TransactionAction[] = batch.map((p) => [
+      'upsert',
+      {
+        partitionKey: 'shared',
+        rowKey: p.itemId,
+        buyPrice: p.buyPrice,
+        sellPrice: p.sellPrice,
+        cachedAt: p.cachedAt,
+      },
+      'Replace',
+    ]);
+    await client.submitTransaction(actions);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GoalProgress
+// ---------------------------------------------------------------------------
+
+export interface GoalProgressRecord {
+  goalId: string;
+  value: string;
+  resolvedAt?: string;
+}
+
+/**
+ * List all goal-progress entities for a user.
+ *
+ * @remarks userId must come from `getRequestUser()` at the route level.
+ */
+export async function getGoals(userId: string): Promise<GoalProgressRecord[]> {
+  const client = await getTableClient('GoalProgress');
+  const results: GoalProgressRecord[] = [];
+
+  const entities = client.listEntities<{
+    value: string;
+    resolvedAt?: string;
+  }>({
+    queryOptions: { filter: `PartitionKey eq '${userId}'` },
+  });
+
+  for await (const entity of entities) {
+    results.push({
+      goalId: entity.rowKey as string,
+      value: entity.value,
+      resolvedAt: entity.resolvedAt,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Upsert a goal-progress entity.
+ *
+ * @remarks userId must come from `getRequestUser()` at the route level.
+ */
+export async function putGoal(
+  userId: string,
+  goalId: string,
+  value: string
+): Promise<void> {
+  const client = await getTableClient('GoalProgress');
+  await client.upsertEntity(
+    { partitionKey: userId, rowKey: goalId, value },
+    'Replace'
+  );
+}
+
+/**
+ * Delete a goal-progress entity. Silently succeeds if it does not exist.
+ *
+ * @remarks userId must come from `getRequestUser()` at the route level.
+ */
+export async function deleteGoal(userId: string, goalId: string): Promise<void> {
+  const client = await getTableClient('GoalProgress');
+  try {
+    await client.deleteEntity(userId, goalId);
+  } catch (err) {
+    if (err instanceof RestError && err.statusCode === 404) return;
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SkinCache
+// ---------------------------------------------------------------------------
+
+/**
+ * Batch-get cached skins for a list of skin IDs.
+ * Missing skins are simply omitted from the returned Map.
+ */
+export async function getCachedSkins(
+  skinIds: string[]
+): Promise<Map<string, SkinCacheEntity>> {
+  const client = await getTableClient('SkinCache');
+  const result = new Map<string, SkinCacheEntity>();
+
+  for (const skinId of skinIds) {
+    try {
+      const entity = await client.getEntity<{
+        name: string;
+        type: string;
+        icon: string;
+        cachedAt: string;
+      }>('shared', skinId);
+      result.set(skinId, {
+        name: entity.name,
+        type: entity.type,
+        icon: entity.icon,
+        cachedAt: entity.cachedAt,
+      });
+    } catch (err) {
+      if (err instanceof RestError && err.statusCode === 404) continue;
+      throw err;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Batch-upsert cached skins.
+ * Automatically chunks into transactions of ≤100 (Azure Table Storage limit).
+ */
+export async function putCachedSkins(
+  skins: Array<{ skinId: string } & SkinCacheEntity>
+): Promise<void> {
+  const client = await getTableClient('SkinCache');
+  const batches = chunk(skins, 100);
+
+  for (const batch of batches) {
+    const actions: TransactionAction[] = batch.map((s) => [
+      'upsert',
+      {
+        partitionKey: 'shared',
+        rowKey: s.skinId,
+        name: s.name,
+        type: s.type,
+        icon: s.icon,
+        cachedAt: s.cachedAt,
+      },
+      'Replace',
+    ]);
+    await client.submitTransaction(actions);
+  }
 }

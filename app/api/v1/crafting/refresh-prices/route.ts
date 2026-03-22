@@ -39,7 +39,10 @@ function collectAllItemIds(node: RecipeNode, ids: Set<number>): void {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = requireUser(req);
   if (!isUser(user)) return user;
-  const rateResult = checkRateLimit(user.id, { maxRequests: 5, windowMs: 300_000 });
+  const rateResult = checkRateLimit(`${user.id}:refresh-prices`, {
+    maxRequests: 5,
+    windowMs: 300_000,
+  });
   if (!rateResult.allowed) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }

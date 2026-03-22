@@ -58,7 +58,10 @@ function formatCacheAge(cachedAt: string): string {
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = requireUser(req);
   if (!isUser(user)) return user;
-  const rateResult = checkRateLimit(user.id, { maxRequests: 10, windowMs: 60_000 });
+  const rateResult = checkRateLimit(`${user.id}:crafting-profit`, {
+    maxRequests: 10,
+    windowMs: 60_000,
+  });
   if (!rateResult.allowed) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }

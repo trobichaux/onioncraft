@@ -1,4 +1,54 @@
 {
   "lastVerified": "2026-03-22",
-  "vendors": []
+  "vendors": [
+    {
+      "itemId": 46741,
+      "itemName": "Thermocatalytic Reagent",
+      "cost": 1496,
+      "costCurrency": "coin",
+      "vendorName": "Master Craftsman",
+      "notes": "Available from any master crafting vendor. 14s 96c each."
+    },
+    {
+      "itemId": 20796,
+      "itemName": "Mystic Crystal",
+      "cost": 3,
+      "costCurrency": "spirit_shard",
+      "vendorName": "Miyani",
+      "notes": "Purchased at Mystic Forge from Miyani."
+    },
+    {
+      "itemId": 20323,
+      "itemName": "Philosopher's Stone",
+      "cost": 1,
+      "costCurrency": "spirit_shard",
+      "vendorName": "Miyani",
+      "notes": "1 Spirit Shard = 10 Philosopher's Stones.",
+      "outputCount": 10
+    },
+    {
+      "itemId": 24305,
+      "itemName": "Bloodstone Shard",
+      "cost": 200,
+      "costCurrency": "spirit_shard",
+      "vendorName": "Miyani",
+      "notes": "Purchased at Mystic Forge from Miyani."
+    },
+    {
+      "itemId": 19925,
+      "itemName": "Obsidian Shard",
+      "cost": 2100,
+      "costCurrency": "karma",
+      "vendorName": "Karma Vendor",
+      "notes": "Available from Karma merchants in Orr, Dragonfall, etc."
+    },
+    {
+      "itemId": 19677,
+      "itemName": "Gift of Battle",
+      "cost": 350,
+      "costCurrency": "wvw_tickets",
+      "vendorName": "WvW Vendor",
+      "notes": "Reward track completion in WvW. Account-bound."
+    }
+  ]
 }

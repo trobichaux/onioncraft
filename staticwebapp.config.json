@@ -5,10 +5,36 @@
   },
   "routes": [
     {
-      "route": "/api/v1/*",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+      "route": "/api/v1/settings/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/v1/crafting/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/v1/skins/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/v1/gw2/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/.auth/login/twitter",
+      "statusCode": 404
+    },
+    {
+      "route": "/.auth/login/aad",
+      "statusCode": 404
     }
   ],
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/github",
+      "statusCode": 302
+    }
+  },
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://render.guildwars2.com https://wiki.guildwars2.com data:; font-src 'self'; connect-src 'self' https://api.guildwars2.com; frame-ancestors 'none'",
     "X-Content-Type-Options": "nosniff",

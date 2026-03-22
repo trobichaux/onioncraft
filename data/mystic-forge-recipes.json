@@ -2,31 +2,108 @@
   "lastVerified": "2026-03-22",
   "recipes": [
     {
-      "outputItemId": 19976,
+      "outputItemId": 19626,
+      "outputItemName": "Gift of Fortune",
       "outputItemCount": 1,
       "ingredients": [
-        { "itemId": 19925, "count": 250 },
-        { "itemId": 19924, "count": 1 },
-        { "itemId": 19926, "count": 1 }
+        { "itemId": 30689, "count": 77, "name": "Mystic Clover" },
+        { "itemId": 19721, "count": 250, "name": "Glob of Ectoplasm" },
+        { "itemId": 19627, "count": 1, "name": "Gift of Magic" },
+        { "itemId": 19628, "count": 1, "name": "Gift of Might" }
       ]
     },
     {
-      "outputItemId": 46762,
+      "outputItemId": 19674,
+      "outputItemName": "Gift of Mastery",
       "outputItemCount": 1,
       "ingredients": [
-        { "itemId": 46742, "count": 10 },
-        { "itemId": 19721, "count": 50 },
-        { "itemId": 19685, "count": 1 }
+        { "itemId": 24305, "count": 1, "name": "Bloodstone Shard" },
+        { "itemId": 19925, "count": 250, "name": "Obsidian Shard" },
+        { "itemId": 19678, "count": 1, "name": "Gift of Exploration" },
+        { "itemId": 19677, "count": 1, "name": "Gift of Battle" }
       ]
     },
     {
-      "outputItemId": 77449,
+      "outputItemId": 30689,
+      "outputItemName": "Mystic Clover",
+      "outputItemCount": 1,
+      "note": "RNG output: ~33% chance per attempt. May also produce T6 materials.",
+      "ingredients": [
+        { "itemId": 19925, "count": 1, "name": "Obsidian Shard" },
+        { "itemId": 19976, "count": 1, "name": "Mystic Coin" },
+        { "itemId": 19721, "count": 1, "name": "Glob of Ectoplasm" },
+        { "itemId": 20796, "count": 6, "name": "Mystic Crystal" }
+      ]
+    },
+    {
+      "outputItemId": 19627,
+      "outputItemName": "Gift of Magic",
       "outputItemCount": 1,
       "ingredients": [
-        { "itemId": 19721, "count": 100 },
-        { "itemId": 19685, "count": 5 },
-        { "itemId": 19675, "count": 2 }
+        { "itemId": 24295, "count": 250, "name": "Vial of Powerful Blood" },
+        { "itemId": 24358, "count": 250, "name": "Powerful Venom Sac" },
+        { "itemId": 24351, "count": 250, "name": "Elaborate Totem" },
+        { "itemId": 24277, "count": 250, "name": "Pile of Crystalline Dust" }
       ]
+    },
+    {
+      "outputItemId": 19628,
+      "outputItemName": "Gift of Might",
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 24294, "count": 250, "name": "Vicious Fang" },
+        { "itemId": 24341, "count": 250, "name": "Armored Scale" },
+        { "itemId": 24350, "count": 250, "name": "Ancient Bone" },
+        { "itemId": 24356, "count": 250, "name": "Vicious Claw" }
+      ]
+    },
+    {
+      "outputItemId": 46735,
+      "outputItemName": "Deldrimor Steel Ingot",
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 46742, "count": 1, "name": "Lump of Mithrillium" },
+        { "itemId": 19684, "count": 3, "name": "Mithril Ingot" },
+        { "itemId": 19685, "count": 18, "name": "Darksteel Ingot" },
+        { "itemId": 46741, "count": 10, "name": "Thermocatalytic Reagent" }
+      ],
+      "note": "Requires time-gated Lump of Mithrillium"
+    },
+    {
+      "outputItemId": 46738,
+      "outputItemName": "Bolt of Damask",
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 46740, "count": 1, "name": "Spool of Silk Weaving Thread" },
+        { "itemId": 19745, "count": 3, "name": "Bolt of Silk" },
+        { "itemId": 19746, "count": 18, "name": "Bolt of Gossamer" },
+        { "itemId": 46741, "count": 10, "name": "Thermocatalytic Reagent" }
+      ],
+      "note": "Requires time-gated Spool of Silk Weaving Thread"
+    },
+    {
+      "outputItemId": 46736,
+      "outputItemName": "Spiritwood Plank",
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 46739, "count": 1, "name": "Glob of Elder Spirit Residue" },
+        { "itemId": 19710, "count": 3, "name": "Elder Wood Plank" },
+        { "itemId": 19713, "count": 18, "name": "Ancient Wood Plank" },
+        { "itemId": 46741, "count": 10, "name": "Thermocatalytic Reagent" }
+      ],
+      "note": "Requires time-gated Glob of Elder Spirit Residue"
+    },
+    {
+      "outputItemId": 84347,
+      "outputItemName": "Elonian Leather Square",
+      "outputItemCount": 1,
+      "ingredients": [
+        { "itemId": 84354, "count": 1, "name": "Spool of Thick Elonian Cord" },
+        { "itemId": 19732, "count": 3, "name": "Cured Thick Leather Square" },
+        { "itemId": 19737, "count": 18, "name": "Cured Hardened Leather Square" },
+        { "itemId": 46741, "count": 10, "name": "Thermocatalytic Reagent" }
+      ],
+      "note": "Requires time-gated Spool of Thick Elonian Cord"
     }
   ]
 }

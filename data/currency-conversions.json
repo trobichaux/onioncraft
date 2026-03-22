@@ -1,4 +1,48 @@
 {
   "lastVerified": "2026-03-22",
-  "conversions": []
+  "conversions": [
+    {
+      "currencyId": 23,
+      "currencyName": "Spirit Shard",
+      "outputItemId": 20796,
+      "outputItemName": "Mystic Crystal",
+      "ratio": 3,
+      "context": "Purchased from Miyani at the Mystic Forge (3 Spirit Shards = 1 Mystic Crystal)"
+    },
+    {
+      "currencyId": 23,
+      "currencyName": "Spirit Shard",
+      "outputItemId": 20323,
+      "outputItemName": "Philosopher's Stone",
+      "ratio": 1,
+      "context": "Purchased from Miyani (1 Spirit Shard = 10 Philosopher's Stones)",
+      "outputCount": 10
+    },
+    {
+      "currencyId": 23,
+      "currencyName": "Spirit Shard",
+      "outputItemId": 24305,
+      "outputItemName": "Bloodstone Shard",
+      "ratio": 200,
+      "context": "Purchased from Miyani (200 Spirit Shards = 1 Bloodstone Shard)"
+    },
+    {
+      "currencyId": 3,
+      "currencyName": "Laurel",
+      "outputItemId": 19721,
+      "outputItemName": "Glob of Ectoplasm",
+      "ratio": 1,
+      "context": "Purchased from Laurel Merchant (1 Laurel = variable Ectos via bags)",
+      "outputCount": 3,
+      "note": "Approximation — Laurel Bags average ~3 ectos each"
+    },
+    {
+      "currencyId": 2,
+      "currencyName": "Karma",
+      "outputItemId": 19925,
+      "outputItemName": "Obsidian Shard",
+      "ratio": 2100,
+      "context": "Purchased from Karma vendor in Orr or via laurels. 2100 Karma per shard."
+    }
+  ]
 }

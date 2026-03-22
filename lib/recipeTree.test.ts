@@ -199,20 +199,21 @@ describe('buildRecipeTree', () => {
   });
 
   it('resolves Mystic Forge recipes from data file', () => {
-    // Item 19976 has a mystic forge recipe in the data file
+    // Item 19628 (Gift of Might) has a mystic forge recipe in the data file
     const recipes = makeRecipes([]); // no standard recipes
     const items = makeItems([
-      { id: 19976, name: 'Mystic Item', flags: [] },
-      { id: 19925, name: 'Ingredient A', flags: [] },
-      { id: 19924, name: 'Ingredient B', flags: [] },
-      { id: 19926, name: 'Ingredient C', flags: [] },
+      { id: 19628, name: 'Gift of Might', flags: [] },
+      { id: 24294, name: 'Vicious Fang', flags: [] },
+      { id: 24341, name: 'Armored Scale', flags: [] },
+      { id: 24350, name: 'Ancient Bone', flags: [] },
+      { id: 24356, name: 'Vicious Claw', flags: [] },
     ]);
 
-    const tree = buildRecipeTree(19976, recipes, items);
+    const tree = buildRecipeTree(19628, recipes, items);
 
     expect(tree.craftable).toBe(true);
-    expect(tree.ingredients).toHaveLength(3);
-    expect(tree.ingredients[0].itemId).toBe(19925);
+    expect(tree.ingredients).toHaveLength(4);
+    expect(tree.ingredients[0].itemId).toBe(24294);
     expect(tree.ingredients[0].count).toBe(250);
   });
 });

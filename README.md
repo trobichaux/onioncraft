@@ -42,9 +42,9 @@ Navigate to the **[Settings](https://onioncraft.geekyonion.com/settings)** page,
 ### 5. Use the Skin Collection Tracker
 
 1. Go to **[Skins](https://onioncraft.geekyonion.com/skins)**
-2. Click **Refresh Collection** to fetch your owned skins, compute unowned skins, and load acquisition methods + TP prices
+2. Click **Refresh Collection** to fetch your owned skins, compute unowned skins, and load acquisition sources
 3. Your **Collection Progress** shows total/owned/unowned counts with a progress bar and last-refreshed timestamp
-4. The **Unowned Skins** table shows what you're missing, with TP prices in gold/silver/copper, acquisition method, and a price range slider to filter by budget
+4. The **Unowned Skins** table shows what you're missing, with **Source** (e.g. "Ascalonian Catacombs", "Achievement", "Gem Store") and **Cost** (e.g. "390 Tears of Ascalon") columns
 5. On subsequent visits, your collection data loads **instantly from cache** — a background check detects newly unlocked skins and prompts you to refresh
 
 ---
@@ -65,15 +65,17 @@ Identifies the most profitable items to craft from your inventory, after reservi
 
 ### Skin Collection Tracker
 
-Shows unowned weapon/armor skins ranked by acquisition method:
+Shows unowned weapon/armor skins ranked by acquisition source:
 
 - **Cross-session persistence** — owned skin IDs and collection metadata stored in Azure Table Storage; full collection result cached in localStorage for instant page loads
 - **Lightweight change detection** — on page load, background check compares owned skin count with GW2 API; prompts for refresh only when changes are detected
-- **Acquisition categorization** — Trading Post, achievement reward, vendor, Gem Store, content drop, or unknown (with wiki link)
-- **Price range slider** — filter skins by TP price budget (min/max in gold/silver/copper)
+- **Acquisition categorization** — dungeon vendor (with token cost), achievement reward, Gem Store, content drop, or unknown (with wiki link)
+- **Dungeon vendor data** — all 8 GW2 dungeons covered via `data/skin-acquisition.json` with name-based pattern matching, token costs per armor/weapon slot, and currency labels
 - **Priority rules engine** — weighted scoring by type, rarity, or acquisition method
 - **Catalog caching** — ~10k skins cached in Azure Table Storage
 - **Collection stats** — total/owned/unowned counts with progress bar and last-refreshed timestamp
+
+> **Note:** TP prices are not displayed for skins. The GW2 API's `/v2/commerce/prices` endpoint takes _item_ IDs, not skin IDs — these are different number spaces, so a skin→item mapping database would be required to look up TP prices correctly. This is tracked as future work.
 
 ## Architecture
 
@@ -192,7 +194,7 @@ lib/
   inventory.ts        Fetch player bank + material storage
   recipeTree.ts       Recipe tree DAG + overage calc + craftable quantity
   profitCalc.ts       TP fee math + crafting cost computation
-  skinCatalog.ts      Skin acquisition categorization + priority rules
+  skinCatalog.ts      Skin acquisition categorization (VendorGroup, matchVendorGroup) + priority rules
   formatCurrency.tsx  Gold/silver/copper display components
   schemas.ts          Zod validation schemas
   validation.ts       Request body validation middleware
@@ -207,6 +209,7 @@ data/
   currency-conversions.json     Currency → item conversion ratios
   vendor-recipes.json           NPC vendor listings
   skin-sources.json             Supplementary skin acquisition metadata
+  skin-acquisition.json         Dungeon vendor skins with name patterns + token costs
 fixtures/gw2/                   GW2 API response snapshots for testing
 docs/                           Design specs, deployment guide, security review
 staticwebapp.config.json        SWA routing + auth + security headers

@@ -243,8 +243,9 @@ Only recipes whose output is tradeable (has a `/v2/commerce/prices` entry) are i
 ### GW2 API Endpoints Used
 - `/v2/account/skins` — skin IDs unlocked on account
 - `/v2/skins` — full skin catalog (bulk, cached in SkinCache table)
-- `/v2/commerce/prices` — check if skin unlock item is TP-tradeable
 - `/v2/achievements` — cross-reference achievement-gated skins
+
+> **Note:** `/v2/commerce/prices` is _not_ used for skins. That endpoint takes item IDs, not skin IDs — these are different number spaces. Passing skin IDs to `/commerce/prices` returns prices for random unrelated items. A skin→item mapping database would be needed for correct TP price lookups (tracked as future work).
 
 ### Skin Catalog Caching Strategy
 `/v2/skins` returns ~90,000+ skin IDs. The full catalog is cached in the `SkinCache` Table Storage table with a 24-hour TTL. On cache miss: fetch all IDs, then fetch metadata in batches of 200 (max 5 concurrent). Manual "Refresh Skin Catalog" button available. Progress indicator shown during initial fetch (can take several minutes).
@@ -263,7 +264,7 @@ The full collection response (unowned skins list with metadata) is cached **clie
 |--------|----------|---------|
 | GET | `/api/v1/skins/collection` | Returns persisted stats (`{ total, owned, lastRefreshed, needsRefresh }`). No GW2 API calls. |
 | POST | `/api/v1/skins/collection/check` | Lightweight change detection — fetches `/account/skins` count from GW2, compares with persisted `ownedCount`. Returns `{ changed, currentCount, previousCount }`. |
-| POST | `/api/v1/skins/collection/refresh` | Full refresh — fetches owned IDs + catalog from GW2, computes unowned list with acquisition methods and TP prices, persists owned IDs + metadata, returns complete response. |
+| POST | `/api/v1/skins/collection/refresh` | Full refresh — fetches owned IDs + catalog from GW2, computes unowned list with acquisition sources and vendor costs, persists owned IDs + metadata, returns complete response. |
 | POST | `/api/v1/skins/catalog/refresh` | Refreshes shared SkinCache with all ~90K skin details (admin/pre-warm). |
 
 ### User Flow
@@ -275,12 +276,15 @@ The full collection response (unowned skins list with metadata) is cached **clie
 
 | Method | How determined |
 |--------|---------------|
-| `trading_post` | Unlock item has listing in `/v2/commerce/prices` |
+| `direct_buy` | Matched via `data/skin-acquisition.json` name patterns (dungeon vendor skins) or `data/vendor-recipes.json` |
 | `achievement` | Cross-referenced via `/v2/achievements` |
-| `direct_buy` | Listed in `data/vendor-recipes.json` |
 | `gem_store` | Listed in `data/skin-sources.json` |
 | `content_drop` | Listed in `data/skin-sources.json` |
 | `unknown` | No data available — wiki URL provided as fallback |
+
+> **Removed:** The `trading_post` method has been removed. The previous implementation incorrectly passed skin IDs to `/v2/commerce/prices` (which takes item IDs). These are different number spaces in GW2, so the displayed TP prices were for random unrelated items.
+
+**Dungeon vendor skins:** `data/skin-acquisition.json` contains vendor groups for all 8 GW2 dungeons. Each group defines `namePatterns` (matched against skin names from `/v2/skins` via `matchVendorGroup()` in `lib/skinCatalog.ts`), token costs per armor/weapon slot (armor: 120–330, weapons: 390 tokens), and currency labels. The UI shows "Source" and "Cost" columns (e.g., "Ascalonian Catacombs" / "390 Tears of Ascalon") instead of the former "Acquisition Method" and "TP Price" columns.
 
 **Achievement cross-referencing:** `/v2/achievements` returns reward lists that may reference skin IDs. Match on `rewards[].type == "Skin"` and `rewards[].id == skinId`. Not all achievement-gated skins are discoverable this way — `data/skin-sources.json` supplements gaps.
 
@@ -356,6 +360,7 @@ All files include a top-level `lastVerified` field. Update this date after verif
 | `data/mystic-forge-recipes.json` | Mystic Forge recipes (not in GW2 API) | `{ lastVerified, recipes: [{ inputs: [{itemId, count}], output: {itemId, count} }] }` |
 | `data/currency-conversions.json` | Currency → item conversion ratios | `{ lastVerified, conversions: [{ currencyId, currencyName, outputItemId, outputItemName, ratio, context }] }` |
 | `data/skin-sources.json` | Supplementary skin acquisition metadata | `{ lastVerified, skins: [{ skinId, method, notes }] }` |
+| `data/skin-acquisition.json` | Dungeon vendor skin data with name-based pattern matching | `{ lastVerified, vendorGroups: [{ id, name, method, currency, currencyLabel, vendorName, namePatterns, tokenCosts, notes }] }` |
 | `data/vendor-recipes.json` | NPC vendor recipe and skin listings | `{ lastVerified, vendors: [{ itemId, vendorName, cost, costCurrencyId }] }` |
 | `data/craft-limits.json` | Daily/weekly crafting production caps | `{ lastVerified, limits: [{ itemId, itemName, dailyCap, resetType }] }` |
 

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestUser } from '@/lib/auth';
-import { getSetting, putSetting } from '@/lib/tableStorage';
+import { getSetting } from '@/lib/tableStorage';
 import { Gw2Client } from '@/lib/gw2Client';
 import { CollectionMetaSchema } from '@/lib/schemas';
 import { logger } from '@/lib/logger';

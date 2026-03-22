@@ -12,7 +12,8 @@ jest.mock('@/lib/tableStorage', () => ({
 }));
 
 jest.mock('@/lib/auth', () => ({
-  getRequestUser: () => ({ id: 'default', name: 'You' }),
+  requireUser: () => ({ id: 'default', name: 'You' }),
+  isUser: () => true,
 }));
 
 jest.mock('@/lib/logger', () => ({

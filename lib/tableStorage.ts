@@ -1,4 +1,4 @@
-import { TableClient, RestError, TransactionAction } from '@azure/data-tables';
+import { TableClient, RestError, TransactionAction, odata } from '@azure/data-tables';
 import type { PriceCacheEntity, SkinCacheEntity } from './schemas';
 
 // ---------------------------------------------------------------------------
@@ -215,7 +215,7 @@ export async function getGoals(userId: string): Promise<GoalProgressRecord[]> {
     value: string;
     resolvedAt?: string;
   }>({
-    queryOptions: { filter: `PartitionKey eq '${userId}'` },
+    queryOptions: { filter: odata`PartitionKey eq ${userId}` },
   });
 
   for await (const entity of entities) {
@@ -345,7 +345,7 @@ export async function getShoppingList(userId: string): Promise<ShoppingListItem[
     completed: boolean;
     addedAt: string;
   }>({
-    queryOptions: { filter: `PartitionKey eq '${userId}'` },
+    queryOptions: { filter: odata`PartitionKey eq ${userId}` },
   });
 
   for await (const entity of entities) {
@@ -424,7 +424,7 @@ export async function deleteShoppingListItem(userId: string, itemId: string): Pr
 export async function clearShoppingList(userId: string): Promise<void> {
   const client = await getTableClient('ShoppingList');
   const entities = client.listEntities<{ rowKey: string }>({
-    queryOptions: { filter: `PartitionKey eq '${userId}'` },
+    queryOptions: { filter: odata`PartitionKey eq ${userId}` },
   });
   for await (const entity of entities) {
     await client.deleteEntity(userId, entity.rowKey as string);

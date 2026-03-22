@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRequestUser } from '@/lib/auth';
+import { requireUser, isUser } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rateLimit';
 import { getSetting } from '@/lib/tableStorage';
 import { CollectionMetaSchema } from '@/lib/schemas';
 import { logger } from '@/lib/logger';
@@ -16,7 +17,12 @@ import { logger } from '@/lib/logger';
  * The full unowned skins list is only available via POST /collection/refresh.
  */
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
+  const rateResult = checkRateLimit(user.id);
+  if (!rateResult.allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
 
   try {
     const apiKeyRaw = await getSetting(user.id, 'apiKey');

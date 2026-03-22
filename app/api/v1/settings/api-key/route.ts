@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getRequestUser } from '@/lib/auth';
+import { requireUser, isUser } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getSetting, putSetting, deleteSetting } from '@/lib/tableStorage';
 import { validateRequestBody } from '@/lib/validation';
@@ -18,7 +18,8 @@ interface TokenInfoResponse {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
   try {
     const rateLimit = checkRateLimit(user.id);
     if (!rateLimit.allowed) {
@@ -88,7 +89,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
   try {
     const rateLimit = checkRateLimit(user.id);
     if (!rateLimit.allowed) {
@@ -116,7 +118,8 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
   try {
     const rateLimit = checkRateLimit(user.id);
     if (!rateLimit.allowed) {

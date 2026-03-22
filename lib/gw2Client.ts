@@ -123,6 +123,8 @@ export class Gw2Client {
 
   // ---- private helpers ----
 
+  private static readonly FETCH_TIMEOUT_MS = 15_000;
+
   private async rawFetch<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
     // Ensure baseUrl ends with / so relative endpoint resolution works
     const base = this.baseUrl.endsWith('/') ? this.baseUrl : this.baseUrl + '/';
@@ -142,7 +144,10 @@ export class Gw2Client {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
     }
 
-    const response = await fetch(url.toString(), { headers });
+    const response = await fetch(url.toString(), {
+      headers,
+      signal: AbortSignal.timeout(Gw2Client.FETCH_TIMEOUT_MS),
+    });
     if (!response.ok) {
       throw new Gw2ApiError(response.status, `GW2 API error: ${response.statusText}`, endpoint);
     }

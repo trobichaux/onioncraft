@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRequestUser } from '@/lib/auth';
+import { requireUser, isUser } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rateLimit';
 import { putCachedSkins } from '@/lib/tableStorage';
 import { getSetting } from '@/lib/tableStorage';
 import { Gw2Client } from '@/lib/gw2Client';
@@ -15,7 +16,12 @@ interface GW2SkinDetail {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
+  const rateResult = checkRateLimit(user.id, { maxRequests: 5, windowMs: 300_000 });
+  if (!rateResult.allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
 
   try {
     const apiKeyRaw = await getSetting(user.id, 'apiKey');

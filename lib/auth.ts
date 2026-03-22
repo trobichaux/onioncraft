@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export interface User {
   id: string;
@@ -23,10 +23,10 @@ interface ClientPrincipal {
  * Every API route MUST call this function — never bypass it.
  *
  * In production (Azure SWA), reads the `x-ms-client-principal` header
- * that SWA injects after authentication. In local dev without SWA CLI,
- * falls back to a default user stub.
+ * that SWA injects after authentication. Returns null when no valid
+ * auth is present — callers MUST check and return 401.
  */
-export function getRequestUser(req: NextRequest): User {
+export function getRequestUser(req: NextRequest): User | null {
   const header = req.headers.get('x-ms-client-principal');
 
   if (header) {
@@ -41,12 +41,32 @@ export function getRequestUser(req: NextRequest): User {
         };
       }
     } catch {
-      // Malformed header — fall through to default
+      // Malformed header — reject
     }
   }
 
-  // Local dev fallback (no SWA auth header present)
-  return { id: 'default', name: 'You' };
+  return null;
+}
+
+/**
+ * Require an authenticated user or return a 401 response.
+ * Use in route handlers:
+ *   const user = requireUser(req);
+ *   if (user instanceof NextResponse) return user;
+ */
+export function requireUser(req: NextRequest): User | NextResponse {
+  const user = getRequestUser(req);
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  return user;
+}
+
+/**
+ * Type guard: true when requireUser returned a real User (not a 401 response).
+ */
+export function isUser(result: User | NextResponse): result is User {
+  return !(result instanceof NextResponse);
 }
 
 /**

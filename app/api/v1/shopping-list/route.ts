@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getRequestUser } from '@/lib/auth';
+import { requireUser, isUser } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { logger } from '@/lib/logger';
 import {
@@ -17,7 +17,12 @@ import { validateRequestBody } from '@/lib/validation';
 
 // GET — return the full shopping list (plugin-friendly)
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
+  const rateResult = checkRateLimit(user.id);
+  if (!rateResult.allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
   try {
     const items = await getShoppingList(user.id);
 
@@ -52,7 +57,8 @@ const SaveSchema = z.object({
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
   try {
     const rateLimit = checkRateLimit(user.id);
     if (!rateLimit.allowed) {
@@ -103,7 +109,8 @@ const PatchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
   try {
     const rateLimit = checkRateLimit(user.id);
     if (!rateLimit.allowed) {
@@ -146,7 +153,8 @@ const DeleteSchema = z.object({
 });
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
   try {
     const rateLimit = checkRateLimit(user.id);
     if (!rateLimit.allowed) {

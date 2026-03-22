@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getRequestUser } from '@/lib/auth';
+import { requireUser, isUser } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rateLimit';
 import { getGoals, putGoal, deleteGoal } from '@/lib/tableStorage';
 import { validateRequestBody } from '@/lib/validation';
 import { GoalProgressSchema } from '@/lib/schemas';
@@ -18,7 +19,12 @@ const DeleteGoalSchema = z.object({
 });
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
+  const rateResult = checkRateLimit(user.id);
+  if (!rateResult.allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
   try {
     const records = await getGoals(user.id);
 
@@ -42,7 +48,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
+  const rateResult = checkRateLimit(user.id);
+  if (!rateResult.allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
   try {
     const parsed = await validateRequestBody(req, AddGoalSchema);
     if ('error' in parsed) {
@@ -65,7 +76,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const user = getRequestUser(req);
+  const user = requireUser(req);
+  if (!isUser(user)) return user;
+  const rateResult = checkRateLimit(user.id);
+  if (!rateResult.allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+  }
   try {
     const parsed = await validateRequestBody(req, DeleteGoalSchema);
     if ('error' in parsed) {

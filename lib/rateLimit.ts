@@ -34,6 +34,17 @@ export function resetRateLimits(): void {
 /**
  * Simple sliding-window rate limiter.
  * Default: 60 requests per minute per user.
+ *
+ * **Known limitation (serverless):** This rate limiter uses an in-memory Map.
+ * In Azure SWA / Azure Functions Consumption plan:
+ * - Each cold start creates a fresh, empty store.
+ * - Concurrent function instances don't share state.
+ * - Rate limits reset on every instance recycle.
+ *
+ * For production hardening, consider Azure Table Storage-backed rate limiting
+ * or Azure API Management rate-limit policies. For a personal-use app,
+ * the in-memory approach provides best-effort protection against accidental
+ * abuse while keeping costs at zero.
  */
 export function checkRateLimit(
   userId: string,

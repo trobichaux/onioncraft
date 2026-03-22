@@ -16,7 +16,8 @@ jest.mock('@/lib/tableStorage', () => ({
 }));
 
 jest.mock('@/lib/auth', () => ({
-  getRequestUser: () => ({ id: 'default', name: 'You' }),
+  requireUser: () => ({ id: 'default', name: 'You' }),
+  isUser: () => true,
 }));
 
 const mockFetchInventory = jest.fn();

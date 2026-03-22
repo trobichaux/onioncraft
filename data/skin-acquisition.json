@@ -1,0 +1,163 @@
+{
+  "lastVerified": "2026-03-22",
+  "description": "Skin acquisition data for vendor/dungeon/karma skins. Name patterns match skin names from /v2/skins to categorize acquisition method. Token costs per slot from GW2 wiki.",
+  "vendorGroups": [
+    {
+      "id": "ac",
+      "name": "Ascalonian Catacombs",
+      "method": "direct_buy",
+      "currency": "ac_token",
+      "currencyLabel": "Tears of Ascalon",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": [
+        "Ascalonian Performer",
+        "Ascalonian Sentry",
+        "Ascalonian Protector",
+        "Royal Ascalonian"
+      ],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Ascalonian Catacombs dungeon tokens. Account-bound."
+    },
+    {
+      "id": "cm",
+      "name": "Caudecus's Manor",
+      "method": "direct_buy",
+      "currency": "cm_token",
+      "currencyLabel": "Seals of Beetletun",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": ["Council Ministry", "Council Watch", "Council Guard", "Golden Wing"],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Caudecus's Manor dungeon tokens. Account-bound."
+    },
+    {
+      "id": "ta",
+      "name": "Twilight Arbor",
+      "method": "direct_buy",
+      "currency": "ta_token",
+      "currencyLabel": "Deadly Blooms",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": ["Nightmare Court", "Nightmare"],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Twilight Arbor dungeon tokens. Account-bound."
+    },
+    {
+      "id": "se",
+      "name": "Sorrow's Embrace",
+      "method": "direct_buy",
+      "currency": "se_token",
+      "currencyLabel": "Manifesto of the Moletariate",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": ["Forgeman", "Dark Asuran"],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Sorrow's Embrace dungeon tokens. Account-bound."
+    },
+    {
+      "id": "cof",
+      "name": "Citadel of Flame",
+      "method": "direct_buy",
+      "currency": "cof_token",
+      "currencyLabel": "Flame Legion Charr Carvings",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": ["Flame Legion", "Molten"],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Citadel of Flame dungeon tokens. Account-bound."
+    },
+    {
+      "id": "hotw",
+      "name": "Honor of the Waves",
+      "method": "direct_buy",
+      "currency": "hotw_token",
+      "currencyLabel": "Symbols of Koda",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": ["of Koda", "Kodan"],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Honor of the Waves dungeon tokens. Account-bound."
+    },
+    {
+      "id": "coe",
+      "name": "Crucible of Eternity",
+      "method": "direct_buy",
+      "currency": "coe_token",
+      "currencyLabel": "Knowledge Crystals",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": ["Inquest"],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Crucible of Eternity dungeon tokens. Account-bound."
+    },
+    {
+      "id": "arah",
+      "name": "Arah",
+      "method": "direct_buy",
+      "currency": "arah_token",
+      "currencyLabel": "Shards of Zhaitan",
+      "vendorName": "Dungeon Merchant",
+      "namePatterns": ["of the Lich", "Accursed", "Grasping Dead", "Dragon's Deep"],
+      "tokenCosts": {
+        "head": 180,
+        "shoulders": 120,
+        "chest": 330,
+        "gloves": 180,
+        "legs": 270,
+        "boots": 180,
+        "weapon": 390
+      },
+      "notes": "Arah dungeon tokens. Account-bound."
+    }
+  ]
+}

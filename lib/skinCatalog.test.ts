@@ -1,45 +1,91 @@
-import { categorizeAcquisition, computeUnownedSkins, applyPriorityRules } from './skinCatalog';
-import type { SkinEntry } from './skinCatalog';
+import {
+  categorizeAcquisition,
+  computeUnownedSkins,
+  applyPriorityRules,
+  matchVendorGroup,
+} from './skinCatalog';
+import type { SkinEntry, AcquisitionData, VendorGroup } from './skinCatalog';
+
+// ---------------------------------------------------------------------------
+// Test fixtures
+// ---------------------------------------------------------------------------
+
+const emptyAcqMap = new Map<number, AcquisitionData>();
+const emptyVendorGroups: VendorGroup[] = [];
+const emptySourceMap = new Map<number, { method: string; notes?: string }>();
+
+const dungeonVendorGroups: VendorGroup[] = [
+  {
+    id: 'ac',
+    name: 'Ascalonian Catacombs',
+    method: 'direct_buy',
+    currency: 'ac_token',
+    currencyLabel: 'Tears of Ascalon',
+    vendorName: 'Dungeon Merchant',
+    namePatterns: ['Ascalonian Performer', 'Ascalonian Sentry', 'Royal Ascalonian'],
+    tokenCosts: {
+      head: 180,
+      shoulders: 120,
+      chest: 330,
+      gloves: 180,
+      legs: 270,
+      boots: 180,
+      weapon: 390,
+    },
+    notes: 'AC dungeon tokens',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// matchVendorGroup
+// ---------------------------------------------------------------------------
+
+describe('matchVendorGroup', () => {
+  it('matches skin names that contain a vendor group pattern', () => {
+    const result = matchVendorGroup('Ascalonian Performer Gloves', dungeonVendorGroups);
+    expect(result).toBeDefined();
+    expect(result!.id).toBe('ac');
+  });
+
+  it('returns undefined when no pattern matches', () => {
+    const result = matchVendorGroup('Random Exotic Sword', dungeonVendorGroups);
+    expect(result).toBeUndefined();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // categorizeAcquisition
 // ---------------------------------------------------------------------------
 
 describe('categorizeAcquisition', () => {
-  const empty = new Set<number>();
-  const emptyMap = new Map<number, { method: string; notes?: string }>();
-
-  it('returns trading_post when skin has a TP listing', () => {
-    expect(categorizeAcquisition(1, true, empty, empty, emptyMap)).toBe('trading_post');
-  });
-
-  it('returns achievement when skin is an achievement reward', () => {
-    const achievements = new Set([42]);
-    expect(categorizeAcquisition(42, false, achievements, empty, emptyMap)).toBe('achievement');
-  });
-
-  it('returns direct_buy when skin is sold by a vendor', () => {
-    const vendors = new Set([99]);
-    expect(categorizeAcquisition(99, false, empty, vendors, emptyMap)).toBe('direct_buy');
+  it('returns method from acquisitionMap when skin ID is present', () => {
+    const acqMap = new Map<number, AcquisitionData>([[42, { skinId: 42, method: 'achievement' }]]);
+    expect(categorizeAcquisition(42, acqMap, emptySourceMap)).toBe('achievement');
   });
 
   it('returns gem_store when skin source method is gem_store', () => {
     const sources = new Map([[10, { method: 'gem_store', notes: 'Exclusive' }]]);
-    expect(categorizeAcquisition(10, false, empty, empty, sources)).toBe('gem_store');
+    expect(categorizeAcquisition(10, emptyAcqMap, sources)).toBe('gem_store');
   });
 
   it('returns content_drop when skin source method is content_drop', () => {
     const sources = new Map([[20, { method: 'content_drop' }]]);
-    expect(categorizeAcquisition(20, false, empty, empty, sources)).toBe('content_drop');
+    expect(categorizeAcquisition(20, emptyAcqMap, sources)).toBe('content_drop');
+  });
+
+  it('returns direct_buy when skin source method is direct_buy', () => {
+    const sources = new Map([[30, { method: 'direct_buy' }]]);
+    expect(categorizeAcquisition(30, emptyAcqMap, sources)).toBe('direct_buy');
   });
 
   it('returns unknown when no match is found', () => {
-    expect(categorizeAcquisition(999, false, empty, empty, emptyMap)).toBe('unknown');
+    expect(categorizeAcquisition(999, emptyAcqMap, emptySourceMap)).toBe('unknown');
   });
 
-  it('prioritizes trading_post over achievement', () => {
-    const achievements = new Set([5]);
-    expect(categorizeAcquisition(5, true, achievements, empty, emptyMap)).toBe('trading_post');
+  it('prioritizes acquisitionMap over skinSources', () => {
+    const acqMap = new Map<number, AcquisitionData>([[5, { skinId: 5, method: 'direct_buy' }]]);
+    const sources = new Map([[5, { method: 'gem_store' }]]);
+    expect(categorizeAcquisition(5, acqMap, sources)).toBe('direct_buy');
   });
 });
 
@@ -54,45 +100,118 @@ describe('computeUnownedSkins', () => {
     [3, { name: 'Gamma Skin', type: 'Back', icon: 'https://img/3.png' }],
   ]);
 
-  const empty = new Set<number>();
-  const emptyMap = new Map<number, { method: string; notes?: string }>();
-  const emptyPrices = new Map<number, number>();
-
   it('filters out owned skins', () => {
     const result = computeUnownedSkins(
       [1, 2, 3],
       [1],
       details,
-      emptyPrices,
-      empty,
-      empty,
-      emptyMap
+      emptyAcqMap,
+      emptyVendorGroups,
+      emptySourceMap
     );
     expect(result.map((s) => s.skinId)).toEqual([2, 3]);
   });
 
   it('generates wiki URLs from skin name', () => {
-    const result = computeUnownedSkins([1, 2], [], details, emptyPrices, empty, empty, emptyMap);
+    const result = computeUnownedSkins(
+      [1, 2],
+      [],
+      details,
+      emptyAcqMap,
+      emptyVendorGroups,
+      emptySourceMap
+    );
     expect(result[0].wikiUrl).toBe('https://wiki.guildwars2.com/wiki/Alpha_Skin');
     expect(result[1].wikiUrl).toBe('https://wiki.guildwars2.com/wiki/Beta_Skin');
   });
 
-  it('includes TP price when available', () => {
-    const prices = new Map([[2, 12345]]);
-    const result = computeUnownedSkins([2], [], details, prices, empty, empty, emptyMap);
-    expect(result[0].tpPrice).toBe(12345);
-    expect(result[0].method).toBe('trading_post');
+  it('populates vendor cost and currency from acquisition data', () => {
+    const acqMap = new Map<number, AcquisitionData>([
+      [
+        2,
+        {
+          skinId: 2,
+          method: 'direct_buy',
+          cost: 390,
+          currency: 'ac_token',
+          currencyLabel: 'Tears of Ascalon',
+          vendorName: 'Dungeon Merchant',
+        },
+      ],
+    ]);
+    const result = computeUnownedSkins([2], [], details, acqMap, emptyVendorGroups, emptySourceMap);
+    expect(result[0].vendorCost).toBe(390);
+    expect(result[0].vendorCurrency).toBe('Tears of Ascalon');
+    expect(result[0].vendorName).toBe('Dungeon Merchant');
+    expect(result[0].method).toBe('direct_buy');
+  });
+
+  it('matches dungeon skins by name pattern and assigns vendor cost', () => {
+    const dungeonDetails = new Map([
+      [
+        10,
+        {
+          name: 'Ascalonian Performer Coat',
+          type: 'Armor',
+          icon: 'https://img/10.png',
+          rarity: 'Exotic',
+        },
+      ],
+    ]);
+    const result = computeUnownedSkins(
+      [10],
+      [],
+      dungeonDetails,
+      emptyAcqMap,
+      dungeonVendorGroups,
+      emptySourceMap
+    );
+    expect(result[0].method).toBe('direct_buy');
+    expect(result[0].vendorCost).toBe(330); // chest cost estimate for armor
+    expect(result[0].vendorCurrency).toBe('Tears of Ascalon');
+    expect(result[0].vendorName).toBe('Dungeon Merchant');
+  });
+
+  it('matches weapon skins by name pattern with weapon token cost', () => {
+    const weaponDetails = new Map([
+      [
+        11,
+        {
+          name: 'Royal Ascalonian Greatsword',
+          type: 'Weapon',
+          icon: 'https://img/11.png',
+          rarity: 'Exotic',
+        },
+      ],
+    ]);
+    const result = computeUnownedSkins(
+      [11],
+      [],
+      weaponDetails,
+      emptyAcqMap,
+      dungeonVendorGroups,
+      emptySourceMap
+    );
+    expect(result[0].vendorCost).toBe(390); // weapon cost
+    expect(result[0].vendorCurrency).toBe('Tears of Ascalon');
   });
 
   it('skips skins with no cached details', () => {
-    const result = computeUnownedSkins([1, 999], [], details, emptyPrices, empty, empty, emptyMap);
+    const result = computeUnownedSkins(
+      [1, 999],
+      [],
+      details,
+      emptyAcqMap,
+      emptyVendorGroups,
+      emptySourceMap
+    );
     expect(result).toHaveLength(1);
     expect(result[0].skinId).toBe(1);
   });
 
   it('includes notes from skin sources', () => {
     const sources = new Map([[1, { method: 'gem_store', notes: 'Outfit only' }]]);
-    const result = computeUnownedSkins([1], [], details, emptyPrices, empty, empty, sources);
+    const result = computeUnownedSkins([1], [], details, emptyAcqMap, emptyVendorGroups, sources);
     expect(result[0].notes).toBe('Outfit only');
   });
 });

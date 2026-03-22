@@ -40,6 +40,11 @@ jest.mock('@/data/skin-sources.json', () => ({
   skins: [{ skinId: 3, method: 'gem_store', notes: 'Test gem store skin' }],
 }));
 
+jest.mock('@/data/skin-acquisition.json', () => ({
+  lastVerified: '2026-03-22',
+  vendorGroups: [],
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

@@ -8,7 +8,9 @@ import { Gw2Client } from '@/lib/gw2Client';
 import { PriorityRulesSchema } from '@/lib/schemas';
 import type { PriorityRules } from '@/lib/schemas';
 import { computeUnownedSkins, applyPriorityRules } from '@/lib/skinCatalog';
+import type { AcquisitionData, VendorGroup } from '@/lib/skinCatalog';
 import skinSourcesData from '@/data/skin-sources.json';
+import skinAcquisitionData from '@/data/skin-acquisition.json';
 import { logger } from '@/lib/logger';
 
 interface GW2SkinDetail {
@@ -18,8 +20,6 @@ interface GW2SkinDetail {
   rarity?: string;
   icon: string;
 }
-
-const BATCH_SIZE = 200;
 
 /**
  * POST /api/v1/skins/collection/refresh
@@ -127,40 +127,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       skinSources.set(s.skinId, { method: s.method, notes: s.notes });
     }
 
-    // 7. Fetch TP prices for unowned skins
-    const tpPrices = new Map<number, number>();
-    for (let i = 0; i < unownedIds.length; i += BATCH_SIZE) {
-      const batch = unownedIds.slice(i, i + BATCH_SIZE);
-      try {
-        const prices = await client.get<Array<{ id: number; sells: { unit_price: number } }>>(
-          '/commerce/prices',
-          { ids: batch.join(',') }
-        );
-        for (const p of prices) {
-          if (p.sells?.unit_price) {
-            tpPrices.set(p.id, p.sells.unit_price);
-          }
-        }
-      } catch (err) {
-        logger.warn('TP price batch fetch failed (some skins may lack pricing)', {
-          batchStart: i,
-          batchSize: batch.length,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
+    // 7. Load acquisition data (vendor groups for name-based matching)
+    const vendorGroups: VendorGroup[] = skinAcquisitionData.vendorGroups as VendorGroup[];
+    const acquisitionMap = new Map<number, AcquisitionData>();
+    // (Currently no per-ID entries; vendor matching is name-based via vendorGroups)
 
-    // 8. Acquisition method categorization
-    const achievementSkinIds = new Set<number>();
-    const vendorSkinIds = new Set<number>();
-
+    // 8. Compute unowned skins with acquisition metadata
     const unowned = computeUnownedSkins(
       allSkinIds,
       ownedSkinIds,
       skinDetails,
-      tpPrices,
-      achievementSkinIds,
-      vendorSkinIds,
+      acquisitionMap,
+      vendorGroups,
       skinSources
     );
 

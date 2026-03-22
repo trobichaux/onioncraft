@@ -35,9 +35,10 @@ Navigate to the **[Settings](https://onioncraft.geekyonion.com/settings)** page,
 ### 4. Use the Crafting Calculator
 
 1. Go to **[Crafting](https://onioncraft.geekyonion.com/crafting)**
-2. Add **Crafting Goals** — items you're saving materials for (e.g. legendaries). Materials needed for these goals are reserved and excluded from profit calculations.
-3. Click **Refresh Prices** to fetch current Trading Post prices
-4. The **Profitable Crafts** table shows the most profitable items you can craft from your remaining inventory, sorted by total profit, with quantities
+2. Your account data (recipes, characters, crafting disciplines) is **automatically initialized** when you save your API key — this is a one-time operation that caches everything for fast loading
+3. Add **Crafting Goals** — items you're saving materials for (e.g. legendaries). Materials needed for these goals are reserved and excluded from profit calculations.
+4. Click **Refresh Prices** to fetch current Trading Post prices and discover any newly learned recipes
+5. The **Profitable Crafts** table shows the most profitable items you can craft from your remaining inventory, sorted by total profit, with quantities
 
 ### 5. Use the Skin Collection Tracker
 
@@ -56,6 +57,8 @@ Navigate to the **[Settings](https://onioncraft.geekyonion.com/settings)** page,
 Identifies the most profitable items to craft from your inventory, after reserving materials for goals:
 
 - **Inventory-aware** — reads your bank and material storage via the GW2 API
+- **Cached recipe data** — recipes, item details, and character disciplines are cached in Azure Table Storage after initial load; only live inventory is fetched on each page view
+- **Incremental updates** — Refresh Prices detects newly learned recipes and caches only the new ones
 - **Goal reservation** — materials for active goals (legendaries, collections) are held back via `calculateOverages()` across ALL goals simultaneously
 - **Quantity calculation** — `maxCraftableFromInventory()` tells you how many of each item you can make from remaining materials
 - **Accurate TP fees** — independent `Math.ceil` on listing (5%) and exchange (10%) fees; never uses the `×0.85` shortcut that produces off-by-one copper errors
@@ -115,17 +118,18 @@ The GW2 API client includes production-grade resilience:
 | **Retry** | Exponential backoff on 429/503, max 3 retries |
 | **Rate Limiter** | Token bucket: 600 req/min, 10 tokens/sec refill |
 | **Bulkhead** | Separate categories prevent one slow endpoint from starving others |
-| **Cache-Aside** | PriceCache + SkinCache checked before API calls, TTL-based staleness |
+| **Cache-Aside** | PriceCache, SkinCache, RecipeCache, ItemCache — checked before API calls, TTL-based staleness |
 
 ### API Routes
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| POST | `/api/v1/account/initialize` | One-time account data load (recipes, items, characters) |
 | GET | `/api/v1/crafting/goals` | List active crafting goals |
 | POST | `/api/v1/crafting/goals` | Add a crafting goal |
 | DELETE | `/api/v1/crafting/goals` | Remove a crafting goal |
-| GET | `/api/v1/crafting/profit` | Ranked profit table |
-| POST | `/api/v1/crafting/refresh-prices` | Fetch and cache TP prices |
+| GET | `/api/v1/crafting/profit` | Ranked profit table (reads from cache) |
+| POST | `/api/v1/crafting/refresh-prices` | Incremental recipe + price refresh |
 | GET | `/api/v1/skins/collection` | Persisted collection metadata (stats) |
 | POST | `/api/v1/skins/collection/check` | Lightweight change detection (owned count diff) |
 | POST | `/api/v1/skins/collection/refresh` | Full refresh: fetch owned, compute unowned, persist |
@@ -172,7 +176,7 @@ npm run dev:swa      # Full SWA local dev (recommended)
 npm run build        # Production build
 npm run lint         # ESLint + Prettier check
 npm run lint:fix     # Auto-fix lint issues
-npm test             # Jest unit tests (241 tests)
+npm test             # Jest unit tests (244 tests)
 npm run test:watch   # Jest in watch mode
 npm run test:e2e     # Playwright e2e tests
 npm run type-check   # TypeScript type checking
@@ -185,11 +189,11 @@ app/
   crafting/           Crafting profit calculator pages
   skins/              Skin collection tracker pages
   settings/           Settings management pages
-  api/v1/             API routes (13 route handlers)
+  api/v1/             API routes (14 route handlers)
 lib/
   auth.ts             getRequestUser() — single auth seam
   gw2Client.ts        GW2 API client with resilience pipeline
-  tableStorage.ts     Azure Table Storage CRUD (5 tables)
+  tableStorage.ts     Azure Table Storage CRUD (7 tables)
   logger.ts           Structured JSON logger (captured by Azure SWA)
   inventory.ts        Fetch player bank + material storage
   recipeTree.ts       Recipe tree DAG + overage calc + craftable quantity
@@ -224,9 +228,10 @@ staticwebapp.config.json        SWA routing + auth + security headers
 | 2 | ✅ Done | Table Storage data layer, Zod schemas, CRUD operations |
 | 3 | ✅ Done | Settings & API key management (validation, permission check) |
 | 4 | ✅ Done | Crafting profit calculator (inventory, recipe tree, overage, TP fees) |
-| 5 | ✅ Done | Skin collection tracker (catalog caching, price range filter) |
+| 5 | ✅ Done | Skin collection tracker (catalog caching, vendor costs, account-bound) |
 | 6 | ✅ Done | CI/CD pipeline (GitHub Actions, CodeQL, SWA deployment) |
 | 7 | ✅ Done | Security hardening (OWASP audit, CSP headers, rate limiting) |
+| 8 | ✅ Done | Caching architecture (initial load + incremental refresh) |
 
 ## Deployment
 

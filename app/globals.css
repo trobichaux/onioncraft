@@ -82,6 +82,21 @@ header nav {
   color: var(--color-accent-hover);
 }
 
+/* Version badge */
+.version-badge {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  color: #4caf50;
+  text-decoration: none;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.version-badge:hover {
+  text-decoration: underline;
+  color: #66bb6a;
+}
+
 /* Auth */
 .auth-status {
   display: flex;

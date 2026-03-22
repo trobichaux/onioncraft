@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import NavLinks from './NavLinks';
 import AuthStatus from './AuthStatus';
+import VersionBadge from './VersionBadge';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/" className="site-title">
                 OnionCraft
               </a>
+              <VersionBadge />
               <NavLinks />
             </div>
             <AuthStatus />

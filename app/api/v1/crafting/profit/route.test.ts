@@ -24,8 +24,14 @@ jest.mock('@/lib/inventory', () => ({
   fetchInventory: (...args: unknown[]) => mockFetchInventory(...args),
 }));
 
+const mockGw2Get = jest.fn();
+const mockGw2GetBulk = jest.fn();
+
 jest.mock('@/lib/gw2Client', () => ({
-  Gw2Client: jest.fn().mockImplementation(() => ({})),
+  Gw2Client: jest.fn().mockImplementation(() => ({
+    get: mockGw2Get,
+    getBulk: mockGw2GetBulk,
+  })),
   Gw2ApiError: class extends Error {
     constructor(
       public status: number,
@@ -49,6 +55,24 @@ function makeRequest(): NextRequest {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Default GW2 API mocks for character/discipline/item fetches
+  mockGw2Get.mockImplementation((endpoint: string) => {
+    if (endpoint === '/characters') return Promise.resolve(['TestChar']);
+    if (endpoint.includes('/crafting')) {
+      return Promise.resolve([
+        { discipline: 'Weaponsmith', rating: 500, active: true },
+        { discipline: 'Armorsmith', rating: 500, active: true },
+        { discipline: 'Artificer', rating: 500, active: true },
+        { discipline: 'Huntsman', rating: 500, active: true },
+        { discipline: 'Tailor', rating: 500, active: true },
+        { discipline: 'Leatherworker', rating: 500, active: true },
+        { discipline: 'Chef', rating: 400, active: false },
+        { discipline: 'Jeweler', rating: 400, active: false },
+      ]);
+    }
+    return Promise.resolve([]);
+  });
+  mockGw2GetBulk.mockResolvedValue([]);
 });
 
 // ---------------------------------------------------------------------------

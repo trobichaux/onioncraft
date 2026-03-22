@@ -16,6 +16,8 @@ interface ProfitItem {
   roi: number;
   dailyCap?: number;
   category?: string;
+  noTpListing?: boolean;
+  accountBound?: boolean;
 }
 
 interface ProfitResponse {
@@ -23,6 +25,7 @@ interface ProfitResponse {
   inventorySize: number;
   goalsCount: number;
   lastUpdated: string;
+  priceWarning?: string;
   error?: string;
 }
 
@@ -180,6 +183,11 @@ export default function ProfitTable() {
           </>
         )}
       </p>
+      {data.priceWarning && (
+        <p className="price-warning" role="alert">
+          ⚠️ {data.priceWarning}
+        </p>
+      )}
       <table>
         <thead>
           <tr>
@@ -199,7 +207,10 @@ export default function ProfitTable() {
         </thead>
         <tbody>
           {sorted.map((item) => (
-            <tr key={item.itemId}>
+            <tr
+              key={item.itemId}
+              className={item.noTpListing || item.accountBound ? 'row-dimmed' : undefined}
+            >
               <td>
                 {item.itemName}
                 {item.dailyCap != null && (
@@ -212,18 +223,30 @@ export default function ProfitTable() {
                     🔒{item.dailyCap}/day
                   </span>
                 )}
+                {item.accountBound && (
+                  <span className="badge-account-bound" title="Account-bound — cannot sell on TP">
+                    {' '}
+                    🔗 Bound
+                  </span>
+                )}
               </td>
               <td>{item.quantity}</td>
-              <td>{formatCoins(item.sellPrice)}</td>
+              <td>
+                {item.noTpListing ? (
+                  <span className="text-muted">No listing</span>
+                ) : (
+                  formatCoins(item.sellPrice)
+                )}
+              </td>
               <td>{formatCoins(item.craftingCost)}</td>
               <td className={item.profitPerUnit >= 0 ? 'text-profit' : 'text-loss'}>
-                {formatCoins(item.profitPerUnit)}
+                {item.noTpListing || item.accountBound ? '—' : formatCoins(item.profitPerUnit)}
               </td>
               <td className={item.totalProfit >= 0 ? 'text-profit' : 'text-loss'}>
-                {formatCoins(item.totalProfit)}
+                {item.noTpListing || item.accountBound ? '—' : formatCoins(item.totalProfit)}
               </td>
               <td className={item.roi >= 0 ? 'text-profit' : 'text-loss'}>
-                {item.roi.toFixed(1)}%
+                {item.noTpListing || item.accountBound ? '—' : `${item.roi.toFixed(1)}%`}
               </td>
             </tr>
           ))}
